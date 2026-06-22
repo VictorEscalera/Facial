@@ -1,0 +1,7 @@
+{
+  "name": "AppFACIAL",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular-standalone"
+}
