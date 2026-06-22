@@ -1,37 +1,153 @@
-/*
- * App Global CSS
- * ----------------------------------------------------------------------------
- * Put style rules here that you want to apply globally. These styles are for
- * the entire app and not just one component. Additionally, this file can be
- * used as an entry point to import other CSS/Sass files to be included in the
- * output CSS.
- * For more information on global stylesheets, visit the documentation:
- * https://ionicframework.com/docs/layout/global-stylesheets
- */
+/* Fondo oscuro con gradiente */
+.auth-bg {
+  --background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
 
-/* Core CSS required for Ionic components to work properly */
-@import "@ionic/angular/css/core.css";
+.auth-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center; /* Centrado horizontal */
+  height: 100%;
+  padding: 20px;
+  max-width: 100%;
+}
 
-/* Basic CSS for apps built with Ionic */
-@import "@ionic/angular/css/normalize.css";
-@import "@ionic/angular/css/structure.css";
-@import "@ionic/angular/css/typography.css";
-@import "@ionic/angular/css/display.css";
+.logo-container {
+  text-align: center;
+  color: white;
+  margin-bottom: 30px;
 
-/* Optional CSS utils that can be commented out */
-@import "@ionic/angular/css/padding.css";
-@import "@ionic/angular/css/float-elements.css";
-@import "@ionic/angular/css/text-alignment.css";
-@import "@ionic/angular/css/text-transformation.css";
-@import "@ionic/angular/css/flex-utils.css";
+  .main-icon {
+    font-size: 80px; /* Tamaño móvil */
+    color: #38bdf8;
+    margin-bottom: 10px;
+  }
+  
+  h1 { font-weight: 700; letter-spacing: 1px; margin: 0; }
+  p { color: #94a3b8; margin-top: 5px; }
+}
 
-/**
- * Ionic Dark Mode
- * -----------------------------------------------------
- * For more info, please see:
- * https://ionicframework.com/docs/theming/dark-mode
- */
+/* Efecto Glassmorphism (Cristal) */
+.glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px); /* Para Safari */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  width: 100%; /* Ocupar todo el ancho disponible en móvil */
+  margin: 0;
+}
 
-/* @import "@ionic/angular/css/palettes/dark.always.css"; */
-/* @import "@ionic/angular/css/palettes/dark.class.css"; */
-@import '@ionic/angular/css/palettes/dark.system.css';
+.auth-content {
+  padding: 20px;
+}
+
+/* Estilo mejorado para los inputs */
+.custom-input {
+  --background: rgba(0, 0, 0, 0.2);
+  --border-radius: 12px;
+  --padding-start: 15px;
+  --color: white;
+  --placeholder-color: rgba(255,255,255,0.7);
+  margin-bottom: 15px;
+  
+  /* Ajuste de espaciado interior para mayor comodidad */
+  &::part(native) {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  ion-icon {
+    color: #38bdf8;
+    margin-right: 12px;
+    font-size: 20px;
+  }
+}
+
+.main-btn {
+  --background: #0ea5e9;
+  --background-activated: #0284c7;
+  --box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+  margin-top: 25px;
+  margin-bottom: 15px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.link-btn {
+  color: #e2e8f0;
+  --color-activated: #cbd5e1;
+  text-transform: none;
+  font-size: 0.9rem;
+  margin-top: 10px;
+}
+
+/* Divisor con líneas */
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: #64748b;
+  margin: 15px 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  &::before {
+    margin-right: .25em;
+  }
+
+  &::after {
+    margin-left: .25em;
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Media Queries para Responsividad --- */
+
+/* Para tablets y computadoras de escritorio (min-width: 768px) */
+@media (min-width: 768px) {
+  .logo-container {
+    margin-bottom: 40px;
+
+    .main-icon {
+      font-size: 70px; /* Tamaño escritorio más equilibrado */
+    }
+  }
+
+  .glass-card {
+    max-width: 450px; /* Ancho máximo controlado en escritorio */
+    margin-top: 0;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .auth-content {
+    padding: 30px; /* Más padding interior en escritorio */
+  }
+
+  .custom-input {
+    margin-bottom: 20px; /* Más espacio entre inputs */
+  }
+
+  .main-btn {
+    margin-top: 30px;
+  }
+}

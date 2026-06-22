@@ -1,0 +1,46 @@
+<ion-content class="auth-bg">
+  <div class="auth-container fade-in">
+    <div class="logo-container">
+      <ion-icon name="person-add-outline" class="main-icon"></ion-icon>
+      <h1>Crear Cuenta</h1>
+      <p>Únete al sistema de AppFacial</p>
+    </div>
+
+    <form [formGroup]="registroForm" (ngSubmit)="registrarUsuario()">
+      <ion-card class="glass-card">
+        <ion-card-content>
+          
+          <ion-item lines="none" class="custom-input">
+            <ion-icon name="person-outline" slot="start"></ion-icon>
+            <ion-input formControlName="nombre" type="text" placeholder="Nombre completo"></ion-input>
+          </ion-item>
+
+          <ion-item lines="none" class="custom-input">
+            <ion-icon name="mail-outline" slot="start"></ion-icon>
+            <ion-input formControlName="email" type="email" placeholder="Correo electrónico"></ion-input>
+          </ion-item>
+
+          <ion-item lines="none" class="custom-input">
+            <ion-icon name="lock-closed-outline" slot="start"></ion-icon>
+            <ion-input formControlName="password" type="password" placeholder="Contraseña"></ion-input>
+          </ion-item>
+
+          <ion-item lines="none" class="custom-input">
+            <ion-icon name="checkmark-circle-outline" slot="start"></ion-icon>
+            <ion-input formControlName="confirmPassword" type="password" placeholder="Confirmar contraseña"></ion-input>
+          </ion-item>
+
+          <ion-button type="submit" expand="block" shape="round" class="main-btn" [disabled]="!registroForm.valid">
+            Registrarse
+          </ion-button>
+          
+          <div class="divider">o</div>
+
+          <ion-button expand="block" fill="clear" class="link-btn" routerLink="/login" routerDirection="back">
+            ¿Ya tienes cuenta? Inicia sesión
+          </ion-button>
+        </ion-card-content>
+      </ion-card>
+    </form>
+  </div>
+</ion-content>

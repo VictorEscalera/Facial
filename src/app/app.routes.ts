@@ -3,6 +3,22 @@ import { Routes } from '@angular/router';
 export const routes: Routes = [
   {
     path: '',
-    loadChildren: () => import('./tabs/tabs.routes').then((m) => m.routes),
+    redirectTo: 'login',
+    pathMatch: 'full',
+  },
+  {
+    path: 'login',
+    loadComponent: () => 
+      import('./login/login.page').then( m => m.LoginPage)
+  },
+  {
+    path: 'registro',
+    loadComponent: () => 
+      import('./registro/registro.page').then( m => m.RegistroPage)
+  },
+  {
+    path: 'inicio',
+    loadComponent: () => 
+      import('./inicio/inicio.page').then( m => m.InicioPage)
   },
 ];

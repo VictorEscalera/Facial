@@ -1,0 +1,37 @@
+<ion-content class="auth-bg">
+  <div class="auth-container fade-in">
+    <div class="logo-container">
+      <ion-icon name="scan-circle-outline" class="main-icon"></ion-icon>
+      <h1>AppFacial</h1>
+      <p>Acceso al Sistema</p>
+    </div>
+
+    <form [formGroup]="loginForm" (ngSubmit)="iniciarSesion()">
+  <ion-card class="glass-card">
+    <ion-card-content class="auth-content">
+      
+      <ion-item lines="none" class="custom-input">
+        <ion-icon name="mail-outline" slot="start"></ion-icon>
+        <ion-input formControlName="email" type="email" placeholder="Correo electrónico"></ion-input>
+      </ion-item>
+
+      <ion-item lines="none" class="custom-input">
+        <ion-icon name="lock-closed-outline" slot="start"></ion-icon>
+        <ion-input formControlName="password" type="password" placeholder="Contraseña"></ion-input>
+      </ion-item>
+
+      <ion-button type="submit" expand="block" shape="round" class="main-btn" [disabled]="!loginForm.valid">
+        Ingresar
+      </ion-button>
+      
+       <div class="divider">o</div>
+
+      <ion-button expand="block" fill="clear" class="link-btn" routerLink="/registro" routerDirection="forward">
+          ¿No tienes cuenta? Regístrate
+        </ion-button>
+      
+    </ion-card-content>
+  </ion-card>
+    </form>
+  </div>
+</ion-content>
