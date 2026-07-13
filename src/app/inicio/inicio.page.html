@@ -1,34 +1,40 @@
-<ion-header class="ion-no-border">
+<ion-header>
   <ion-toolbar color="dark">
-    <ion-title>Panel de Clasificación</ion-title>
-    <ion-buttons slot="end">
-      <ion-button [routerLink]="['/login']" routerDirection="root">
-        <ion-icon name="log-out-outline"></ion-icon>
-      </ion-button>
-    </ion-buttons>
+    <ion-title>AppFacial - IA Access</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content class="dashboard-bg ion-padding">
-  <div class="welcome-header fade-in" style="color: white; margin-bottom: 20px;">
-    <h2 style="font-weight: bold; margin-bottom: 5px;">¡Hola, {{ usuarioLogeado }}!</h2>
-    <p style="color: #94a3b8; margin-top: 0;">Sistema TR1 Activo y conectado a Raspberry Pi.</p>
+<ion-content class="ion-padding ion-text-center">
+  <ion-card>
+    <ion-card-content>
+      <p>{{ statusMessage() }}</p>
+    </ion-card-content>
+  </ion-card>
+
+  <div class="container-imagenes" style="display: flex; flex-direction: column; align-items: center; gap: 20px; margin-top: 20px;">
+    
+    <div style="display: none;">
+      <img id="imagenReferencia" src="assets/images/yo.jpeg" crossorigin="anonymous" />
+    </div>
+
+    <div>
+      <h5 style="color: #a5a1ff; text-transform: uppercase;">Sensor IA Activo</h5>
+      <video id="videoCamara" autoplay playsinline width="250" height="250" style="border-radius: 16px; border: 3px solid #6200ee; object-fit: cover; transform: scaleX(-1);"></video>
+    </div>
   </div>
 
-  <div class="records-container fade-in">
-    <h3 style="color: white; border-left: 4px solid #0ea5e9; padding-left: 10px;">Capturas de Visión Artificial</h3>
-    
-    <ion-card class="glass-card" style="margin: 10px 0;">
-      <img src="https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Registro de cámara" />
-      <ion-card-header>
-        <ion-card-subtitle style="color: #38bdf8;">
-          <ion-icon name="hardware-chip-outline"></ion-icon> Nodo Raspberry Pi 1
-        </ion-card-subtitle>
-        <ion-card-title style="color: white; font-size: 1.2rem;">Rostro Detectado</ion-card-title>
-      </ion-card-header>
-      <ion-card-content style="color: #94a3b8;">
-        <ion-icon name="time-outline"></ion-icon> Hoy, 14:30 hrs
-      </ion-card-content>
-    </ion-card>
-  </div>
+  @if (!isLoadingModels()) {
+    <div class="ion-margin-top" style="color: #00e676; font-weight: bold; animation: pulse 2s infinite;">
+      <ion-icon name="scan-outline" style="font-size: 24px; vertical-align: middle;"></ion-icon>
+      Escaneando el entorno cada 5s...
+    </div>
+  }
+
+  @if (matchResult()) {
+    <div class="result-box ion-margin-top" style="background: rgba(0,0,0,0.4); padding: 15px; border-radius: 10px; border: 1px dashed rgba(255, 255, 255, 0.2);">
+      <h2 [ngStyle]="{'color': matchResult().includes('EXITOSO') ? '#00e676' : '#ff1744', 'font-weight': 'bold'}">
+        {{ matchResult() }}
+      </h2>
+    </div>
+  }
 </ion-content>
