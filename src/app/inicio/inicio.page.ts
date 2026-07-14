@@ -1,7 +1,10 @@
-import { Component, OnInit, OnDestroy, signal } from '@angular/core';
+import { AfterViewInit, Component, NgZone, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonicModule } from '@ionic/angular';
 import * as faceapi from '@vladmandic/face-api';
+import { addIcons } from 'ionicons';
+import { scanOutline } from 'ionicons/icons';
+import { Capacitor } from '@capacitor/core';
 
 @Component({
   selector: 'app-inicio',
@@ -10,7 +13,7 @@ import * as faceapi from '@vladmandic/face-api';
   standalone: true,
   imports: [CommonModule, IonicModule]
 })
-export class InicioPage implements OnInit, OnDestroy {
+export class InicioPage implements AfterViewInit, OnDestroy {
   
   public isLoadingModels = signal<boolean>(true);
   public statusMessage = signal<string>('Cargando redes neuronales...');
@@ -18,121 +21,346 @@ export class InicioPage implements OnInit, OnDestroy {
   private streamCamara: MediaStream | null = null;
   
   // 1. Creamos la variable para guardar el ID del temporizador
-  private intervaloEscaneo: any;
+  private intervaloEscaneo?: ReturnType<typeof setInterval>;
+  private escaneoEnCurso = false;
+  private faceMatcher: faceapi.FaceMatcher | null = null;
+  private referenciasPreparadas = false;
+  private vistaActiva = true;
+  private activandoReconocimiento = false;
+  private accesoEnCurso = false;
+  private accesoSolicitadoParaRostroActual = false;
+  private readonly ipPuenteEnDispositivo = '192.168.120.49';
 
-  constructor() {}
+  constructor(private readonly ngZone: NgZone) {
+    // Evitamos el colapso de la URL inyectando el ícono en memoria
+    addIcons({ scanOutline });
+  }
 
-  async ngOnInit() {
-    await this.encenderCamara();
-    await this.cargarModelosIA();
+  async ngAfterViewInit() {
+    try {
+      await this.cargarModelosIA();
+      await this.crearDescriptoresReferencia();
+      this.referenciasPreparadas = true;
+      this.isLoadingModels.set(false);
+
+      if (this.vistaActiva) {
+        await this.activarReconocimiento();
+      }
+    } catch (error) {
+      console.error('[FaceAPI] Error al inicializar el reconocimiento facial:', error);
+      this.statusMessage.set('Error al inicializar el reconocimiento facial.');
+    }
+  }
+
+  async ionViewDidEnter() {
+    this.vistaActiva = true;
+    if (this.referenciasPreparadas) {
+      await this.activarReconocimiento();
+    }
+  }
+
+  ionViewWillLeave() {
+    this.vistaActiva = false;
+    this.detenerReconocimiento();
   }
 
   ngOnDestroy() {
-    this.apagarCamara();
-    // 2. SÚPER IMPORTANTE: Detener el reloj cuando cierres la app o cambies de pantalla
+    this.vistaActiva = false;
+    this.detenerReconocimiento();
+  }
+
+  private async activarReconocimiento() {
+    if (
+      !this.vistaActiva ||
+      this.activandoReconocimiento ||
+      this.streamCamara ||
+      this.intervaloEscaneo
+    ) {
+      return;
+    }
+
+    this.activandoReconocimiento = true;
+    try {
+      await this.encenderCamara();
+
+      // El permiso puede resolverse después de que el usuario abandone la página.
+      if (!this.vistaActiva) {
+        this.apagarCamara();
+        return;
+      }
+
+      this.statusMessage.set('IA lista. Búsqueda de rostros iniciada.');
+      this.iniciarBucleDeEscaneo();
+    } catch (error) {
+      console.error('[FaceAPI] No se pudo activar el reconocimiento:', error);
+    } finally {
+      this.activandoReconocimiento = false;
+    }
+  }
+
+  private detenerReconocimiento() {
     if (this.intervaloEscaneo) {
       clearInterval(this.intervaloEscaneo);
+      this.intervaloEscaneo = undefined;
     }
+    this.accesoSolicitadoParaRostroActual = false;
+    this.apagarCamara();
   }
 
   async encenderCamara() {
     try {
-      const videoElement = document.getElementById('videoCamara') as HTMLVideoElement;
+      const videoElement = document.getElementById('videoCamara') as HTMLVideoElement | null;
+      if (!videoElement) {
+        throw new Error('No se encontró el elemento #videoCamara.');
+      }
+
       this.streamCamara = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user' }
       });
-      if (videoElement) {
-        videoElement.srcObject = this.streamCamara;
-      }
+      videoElement.srcObject = this.streamCamara;
+      await videoElement.play();
+      console.log('[FaceAPI] Cámara lista:', {
+        id: videoElement.id,
+        width: videoElement.videoWidth,
+        height: videoElement.videoHeight
+      });
     } catch (error) {
-      console.error('Error con la cámara:', error);
+      console.error('[FaceAPI] Error con la cámara:', error);
       this.statusMessage.set('No se pudo acceder a la cámara.');
+      throw error;
     }
   }
 
   async cargarModelosIA() {
     try {
-      const MODEL_URL = '../assets/models'; 
-      await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
-      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-      await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+      const MODEL_URL = '/assets/models';
+      console.log('[FaceAPI] Cargando modelos desde:', MODEL_URL);
+      await Promise.all([
+        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+      ]);
+      console.log('[FaceAPI] Modelos cargados');
       
-      this.isLoadingModels.set(false);
-      this.statusMessage.set('IA Lista. Búsqueda de rostros iniciada.');
-      
-      // 3. En cuanto terminan de cargar los "cerebros", arrancamos el ciclo automático
-      this.iniciarBucleDeEscaneo();
-
     } catch (error) {
-      console.error('Error cargando IA:', error);
+      console.error('[FaceAPI] Error cargando IA:', error);
       this.statusMessage.set('Error al cargar los modelos de IA.');
+      throw error;
     }
+  }
+
+  private async crearDescriptoresReferencia() {
+    const referencias = [
+      { id: 'imagenReferencia', etiqueta: 'Usuario' },
+      { id: 'imagenReferenciaCompanero', etiqueta: 'Sergio' }
+    ];
+    const descriptores: faceapi.LabeledFaceDescriptors[] = [];
+
+    for (const referencia of referencias) {
+      const imagen = document.getElementById(referencia.id) as HTMLImageElement | null;
+      if (!imagen) {
+        throw new Error(`No se encontró la imagen #${referencia.id}.`);
+      }
+
+      if (!imagen.complete || imagen.naturalWidth === 0) {
+        console.log(`[FaceAPI] Esperando que cargue #${referencia.id}...`);
+        await imagen.decode();
+      }
+
+      const deteccion = await faceapi
+        .detectSingleFace(imagen)
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      if (!deteccion) {
+        throw new Error(`No se detectó un rostro en #${referencia.id} (${imagen.src}).`);
+      }
+
+      descriptores.push(
+        new faceapi.LabeledFaceDescriptors(referencia.etiqueta, [deteccion.descriptor])
+      );
+      console.log('[FaceAPI] Descriptores extraídos:', {
+        id: referencia.id,
+        etiqueta: referencia.etiqueta,
+        longitud: deteccion.descriptor.length
+      });
+    }
+
+    this.faceMatcher = new faceapi.FaceMatcher(descriptores, 0.5);
+    console.log(
+      '[FaceAPI] Descriptores extraídos y FaceMatcher listo:',
+      descriptores.map(descriptor => descriptor.label)
+    );
   }
 
   // 4. Esta es la función que hace el ciclo cada 5000 milisegundos (5 segundos)
   iniciarBucleDeEscaneo() {
-    this.intervaloEscaneo = setInterval(() => {
-      this.escanearConIA();
-    }, 5000);
+    this.ngZone.runOutsideAngular(() => {
+      void this.escanearConIA();
+      this.intervaloEscaneo = setInterval(() => {
+        void this.escanearConIA();
+      }, 5000);
+    });
   }
 
   async escanearConIA() {
-    // Si no hay cámara cargada todavía, que no haga nada para evitar errores
-    const videoCamara = document.getElementById('videoCamara') as HTMLVideoElement;
-    if (!videoCamara || videoCamara.paused || videoCamara.ended) return;
+    if (this.escaneoEnCurso) {
+      console.log('[FaceAPI] Escaneo omitido: el ciclo anterior sigue en curso.');
+      return;
+    }
 
-    this.statusMessage.set('Analizando biometría en vivo...');
-    
-    const imgGuardada = document.getElementById('imagenReferencia') as HTMLImageElement;
+    const videoCamara = document.getElementById('videoCamara') as HTMLVideoElement | null;
+    if (!videoCamara) {
+      console.error('[FaceAPI] No se encontró el video #videoCamara.');
+      return;
+    }
+    if (!this.faceMatcher) {
+      console.error('[FaceAPI] No hay descriptores de referencia preparados.');
+      return;
+    }
+    if (videoCamara.paused || videoCamara.ended || videoCamara.readyState < 2) {
+      console.log('[FaceAPI] Video aún no listo:', {
+        paused: videoCamara.paused,
+        ended: videoCamara.ended,
+        readyState: videoCamara.readyState
+      });
+      return;
+    }
+
+    this.escaneoEnCurso = true;
+    this.ngZone.run(() => {
+      this.statusMessage.set('Analizando biometría en vivo...');
+    });
 
     try {
-      const deteccionReferencia = await faceapi
-        .detectSingleFace(imgGuardada)
+      console.log('[FaceAPI] Escaneando video:', videoCamara.id);
+      const deteccionesVivo = await faceapi
+        .detectAllFaces(videoCamara)
         .withFaceLandmarks()
-        .withFaceDescriptor();
+        .withFaceDescriptors();
 
-      if (!deteccionReferencia) return;
-
-      const deteccionVivo = await faceapi
-        .detectSingleFace(videoCamara)
-        .withFaceLandmarks()
-        .withFaceDescriptor();
-
-      // Si no detecta a nadie frente al teléfono en ese segundo, limpia el mensaje y se sale
-      if (!deteccionVivo) {
-        this.statusMessage.set('Esperando sujeto en el marco...');
-        this.matchResult.set('');
+      // La inferencia no se puede cancelar; se descarta si la vista ya se cerró.
+      if (!this.vistaActiva) {
+        console.log('[FaceAPI] Resultado descartado: la vista ya no está activa.');
         return;
       }
 
-      const faceMatcher = new faceapi.FaceMatcher(deteccionReferencia.descriptor, 0.5);
-      const coincidencia = faceMatcher.findBestMatch(deteccionVivo.descriptor);
+      if (deteccionesVivo.length === 0) {
+        console.log('[FaceAPI] No se detectó ningún rostro en cámara.');
+        this.accesoSolicitadoParaRostroActual = false;
+        this.ngZone.run(() => {
+          this.statusMessage.set('Esperando sujeto en el marco...');
+          this.matchResult.set('');
+        });
+        return;
+      }
+
+      console.log('[FaceAPI] Rostro detectado en cámara:', deteccionesVivo.length);
+      const coincidencias = deteccionesVivo.map(deteccion =>
+        this.faceMatcher!.findBestMatch(deteccion.descriptor)
+      );
+      coincidencias.forEach((coincidencia, indice) => {
+        console.log('[FaceAPI] Distancia de coincidencia:', {
+          rostro: indice + 1,
+          etiqueta: coincidencia.label,
+          distancia: coincidencia.distance,
+          umbral: 0.5
+        });
+      });
+
+      const coincidencia = coincidencias.reduce((mejor, actual) =>
+        actual.distance < mejor.distance ? actual : mejor
+      );
 
       if (coincidencia.label !== 'unknown') {
-        this.matchResult.set('¡ACCESO EXITOSO!');
-        this.statusMessage.set('Identidad verificada por Inteligencia Artificial.');
-        this.abrirPuertaServomotores();
-        
-        // OPCIONAL: Si quieres que deje de escanear en cuanto te abre la puerta, descomenta esta línea:
-        // clearInterval(this.intervaloEscaneo);
+        this.ngZone.run(() => {
+          this.matchResult.set('¡ACCESO EXITOSO!');
+          this.statusMessage.set(`Identidad verificada: ${coincidencia.label}.`);
+        });
+
+        if (!this.accesoSolicitadoParaRostroActual && !this.accesoEnCurso) {
+          this.accesoSolicitadoParaRostroActual = true;
+          void this.abrirPuertaServomotores();
+        } else {
+          console.log('[FaceAPI] Apertura omitida: este rostro ya autorizó el acceso.');
+        }
 
       } else {
-        this.matchResult.set('¡ACCESO DENEGADO!');
-        this.statusMessage.set('Rostro desconocido (Intruso bloqueado).');
+        this.accesoSolicitadoParaRostroActual = false;
+        this.ngZone.run(() => {
+          this.matchResult.set('¡ACCESO DENEGADO!');
+          this.statusMessage.set('Rostro desconocido (Intruso bloqueado).');
+        });
       }
 
     } catch (error) {
-      console.error(error);
+      console.error('[FaceAPI] Error durante el escaneo:', error);
+      if (this.vistaActiva) {
+        this.ngZone.run(() => {
+          this.statusMessage.set('Error durante el análisis facial. Revisa la consola.');
+        });
+      }
+    } finally {
+      this.escaneoEnCurso = false;
     }
   }
 
-  abrirPuertaServomotores() {
-    console.log('Señal enviada al backend para accionar cerradura.');
+  async abrirPuertaServomotores() {
+    if (this.accesoEnCurso) return;
+
+    this.accesoEnCurso = true;
+    console.log('Señal de apertura iniciada, contactando al puente de hardware...');
+
+    const hostPuente = Capacitor.isNativePlatform()
+      ? this.ipPuenteEnDispositivo
+      : window.location.hostname || 'localhost';
+    const urlPuente = `http://${hostPuente}:5000/abrir-puerta`;
+    console.log('URL del puente Arduino:', urlPuente);
+
+    this.ngZone.run(() => {
+      this.statusMessage.set('Acceso autorizado. Ejecutando apertura física...');
+    });
+
+    try {
+      const response = await fetch(urlPuente, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await response.json().catch(() => ({
+        message: `Respuesta HTTP ${response.status}`
+      }));
+
+      if (!response.ok) {
+        throw new Error(data.message || `Error HTTP ${response.status}`);
+      }
+
+      console.log('Respuesta final del circuito:', data);
+      this.ngZone.run(() => {
+        this.statusMessage.set('Acceso completado. Puerta cerrada y asegurada.');
+      });
+    } catch (error) {
+      console.error('Error al contactar con el Arduino:', error);
+      this.accesoSolicitadoParaRostroActual = false;
+      const mensaje = error instanceof Error ? error.message : 'Error desconocido de hardware';
+      this.ngZone.run(() => {
+        this.statusMessage.set(`Fallo de hardware: ${mensaje}`);
+      });
+    } finally {
+      this.accesoEnCurso = false;
+    }
   }
 
   apagarCamara() {
     if (this.streamCamara) {
       this.streamCamara.getTracks().forEach(track => track.stop());
+      this.streamCamara = null;
+    }
+
+    const videoElement = document.getElementById('videoCamara') as HTMLVideoElement | null;
+    if (videoElement) {
+      videoElement.srcObject = null;
     }
   }
 }
