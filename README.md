@@ -16,6 +16,8 @@ El proyecto permite:
 - cargar los modelos de `face-api` desde `src/assets/models`;
 - generar descriptores para `yo.jpeg` y `Sergio.jpeg`;
 - analizar la cámara cada 5 segundos;
+- precargar los modelos una sola vez y reutilizarlos durante la sesión;
+- mostrar un spinner no bloqueante de Ionic mientras se inicializan las redes;
 - mostrar en consola cada etapa del reconocimiento y la distancia obtenida;
 - reconocer más de un usuario con un umbral de distancia de `0.5`;
 - solicitar una sola apertura mientras el mismo rostro permanece en cámara;
@@ -545,6 +547,8 @@ Git.
 - agregados registros de diagnóstico para modelos, descriptores, detecciones y
   distancias;
 - movido el escaneo fuera de Angular `NgZone`;
+- agregada precarga singleton de modelos y caché en memoria del `FaceMatcher`;
+- agregado `ion-spinner` no bloqueante durante la preparación de la IA;
 - agregada limpieza del intervalo y de las pistas de cámara;
 - agregado `muted` al video para compatibilidad con autoplay;
 - evitadas inferencias y órdenes de apertura simultáneas;

@@ -1,10 +1,13 @@
-import { AfterViewInit, Component, NgZone, OnDestroy, signal } from '@angular/core';
+import { AfterViewInit, Component, inject, NgZone, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonicModule } from '@ionic/angular';
-import * as faceapi from '@vladmandic/face-api';
+import type * as FaceApi from '@vladmandic/face-api';
 import { addIcons } from 'ionicons';
 import { scanOutline } from 'ionicons/icons';
 import { Capacitor } from '@capacitor/core';
+import { FaceRecognitionService } from '../services/face-recognition.service';
+
+type FaceApiModule = typeof import('@vladmandic/face-api');
 
 @Component({
   selector: 'app-inicio',
@@ -16,14 +19,18 @@ import { Capacitor } from '@capacitor/core';
 export class InicioPage implements AfterViewInit, OnDestroy {
   
   public isLoadingModels = signal<boolean>(true);
+  public isRecognitionReady = signal<boolean>(false);
   public statusMessage = signal<string>('Cargando redes neuronales...');
   public matchResult = signal<string>('');
+  private readonly ngZone = inject(NgZone);
+  private readonly faceRecognition = inject(FaceRecognitionService);
   private streamCamara: MediaStream | null = null;
+  private faceApi: FaceApiModule | null = null;
   
   // 1. Creamos la variable para guardar el ID del temporizador
   private intervaloEscaneo?: ReturnType<typeof setInterval>;
   private escaneoEnCurso = false;
-  private faceMatcher: faceapi.FaceMatcher | null = null;
+  private faceMatcher: FaceApi.FaceMatcher | null = null;
   private referenciasPreparadas = false;
   private vistaActiva = true;
   private activandoReconocimiento = false;
@@ -31,25 +38,38 @@ export class InicioPage implements AfterViewInit, OnDestroy {
   private accesoSolicitadoParaRostroActual = false;
   private readonly ipPuenteEnDispositivo = '192.168.120.49';
 
-  constructor(private readonly ngZone: NgZone) {
+  constructor() {
     // Evitamos el colapso de la URL inyectando el ícono en memoria
     addIcons({ scanOutline });
   }
 
   async ngAfterViewInit() {
     try {
+      // Cede dos frames para que Ionic pinte el indicador antes de iniciar TensorFlow.
+      await this.esperarPintadoInicial();
       await this.cargarModelosIA();
       await this.crearDescriptoresReferencia();
       this.referenciasPreparadas = true;
+      this.isRecognitionReady.set(true);
       this.isLoadingModels.set(false);
+      // El video se crea con el bloque @else; esperamos a que Angular lo renderice.
+      await this.esperarPintadoInicial();
 
       if (this.vistaActiva) {
         await this.activarReconocimiento();
       }
     } catch (error) {
       console.error('[FaceAPI] Error al inicializar el reconocimiento facial:', error);
+      this.isRecognitionReady.set(false);
+      this.isLoadingModels.set(false);
       this.statusMessage.set('Error al inicializar el reconocimiento facial.');
     }
+  }
+
+  private esperarPintadoInicial(): Promise<void> {
+    return new Promise(resolve => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    });
   }
 
   async ionViewDidEnter() {
@@ -133,14 +153,9 @@ export class InicioPage implements AfterViewInit, OnDestroy {
 
   async cargarModelosIA() {
     try {
-      const MODEL_URL = '/assets/models';
-      console.log('[FaceAPI] Cargando modelos desde:', MODEL_URL);
-      await Promise.all([
-        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-      ]);
-      console.log('[FaceAPI] Modelos cargados');
+      await this.faceRecognition.cargarModelos();
+      this.faceApi = await this.faceRecognition.obtenerFaceApi();
+      console.log('[FaceAPI] Modelos disponibles en InicioPage.');
       
     } catch (error) {
       console.error('[FaceAPI] Error cargando IA:', error);
@@ -150,13 +165,23 @@ export class InicioPage implements AfterViewInit, OnDestroy {
   }
 
   private async crearDescriptoresReferencia() {
+    const faceapi = this.obtenerFaceApiCargada();
+    const inicioTotal = performance.now();
+    const matcherEnMemoria = this.faceRecognition.obtenerFaceMatcher();
+    if (matcherEnMemoria) {
+      this.faceMatcher = matcherEnMemoria;
+      console.log('[FaceAPI] Descriptores reutilizados desde memoria.');
+      return;
+    }
+
     const referencias = [
       { id: 'imagenReferencia', etiqueta: 'Usuario' },
       { id: 'imagenReferenciaCompanero', etiqueta: 'Sergio' }
     ];
-    const descriptores: faceapi.LabeledFaceDescriptors[] = [];
+    const descriptores: FaceApi.LabeledFaceDescriptors[] = [];
 
     for (const referencia of referencias) {
+      const inicioReferencia = performance.now();
       const imagen = document.getElementById(referencia.id) as HTMLImageElement | null;
       if (!imagen) {
         throw new Error(`No se encontró la imagen #${referencia.id}.`);
@@ -182,15 +207,28 @@ export class InicioPage implements AfterViewInit, OnDestroy {
       console.log('[FaceAPI] Descriptores extraídos:', {
         id: referencia.id,
         etiqueta: referencia.etiqueta,
-        longitud: deteccion.descriptor.length
+        longitud: deteccion.descriptor.length,
+        tiempoMs: Math.round(performance.now() - inicioReferencia)
       });
     }
 
     this.faceMatcher = new faceapi.FaceMatcher(descriptores, 0.5);
+    this.faceRecognition.guardarFaceMatcher(this.faceMatcher);
     console.log(
       '[FaceAPI] Descriptores extraídos y FaceMatcher listo:',
-      descriptores.map(descriptor => descriptor.label)
+      {
+        identidades: descriptores.map(descriptor => descriptor.label),
+        tiempoTotalMs: Math.round(performance.now() - inicioTotal)
+      }
     );
+    this.faceRecognition.registrarDiagnostico('descriptores preparados');
+  }
+
+  private obtenerFaceApiCargada(): FaceApiModule {
+    if (!this.faceApi) {
+      throw new Error('FaceAPI todavía no está inicializada.');
+    }
+    return this.faceApi;
   }
 
   // 4. Esta es la función que hace el ciclo cada 5000 milisegundos (5 segundos)
@@ -233,11 +271,17 @@ export class InicioPage implements AfterViewInit, OnDestroy {
     });
 
     try {
+      const faceapi = this.obtenerFaceApiCargada();
+      const inicioInferencia = performance.now();
       console.log('[FaceAPI] Escaneando video:', videoCamara.id);
       const deteccionesVivo = await faceapi
         .detectAllFaces(videoCamara)
         .withFaceLandmarks()
         .withFaceDescriptors();
+      console.log('[FaceAPI] Inferencia de cámara completada:', {
+        rostros: deteccionesVivo.length,
+        tiempoMs: Math.round(performance.now() - inicioInferencia)
+      });
 
       // La inferencia no se puede cancelar; se descarta si la vista ya se cerró.
       if (!this.vistaActiva) {

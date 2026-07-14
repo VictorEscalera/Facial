@@ -1,4 +1,7 @@
 {
+  "files.associations": {
+    "*.ino": "cpp"
+  },
   "typescript.preferences.autoImportFileExcludePatterns": [
     "@ionic/angular/common",
     "@ionic/angular/directives",

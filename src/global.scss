@@ -115,6 +115,87 @@
   animation: fadeIn 0.8s ease-out forwards;
 }
 
+/* Pantalla exclusiva durante la inicializacion de face-api. */
+.face-reference-images {
+  position: absolute;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+}
+
+app-inicio {
+  ion-content {
+    font-family: 'Inter', sans-serif;
+  }
+
+  .container-imagenes {
+    display: flex;
+    margin-top: 20px;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+
+    h5 {
+      color: #a5a1ff;
+      text-transform: uppercase;
+    }
+
+    video {
+      border-radius: 16px;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+  }
+
+  .scan-status {
+    color: #00e676;
+    font-weight: 700;
+
+    ion-icon {
+      font-size: 24px;
+      vertical-align: middle;
+    }
+  }
+}
+
+.neural-loading-panel {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 24px;
+  box-sizing: border-box;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: #d9d7ff;
+  background: transparent;
+
+  ion-spinner {
+    width: 54px;
+    height: 54px;
+    --color: #a5a1ff;
+  }
+
+  p {
+    margin: 0;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+  }
+}
+
+.initialization-error {
+  display: flex;
+  min-height: 100vh;
+  padding: 24px;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  color: #ff8a9a;
+  font-weight: 600;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }

@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <Servo.h>
 
 Servo servoCerradura;
@@ -34,6 +35,12 @@ EstadoAcceso estado = REPOSO;
 unsigned long inicioEstadoMs = 0;
 unsigned long ultimoPasoMs = 0;
 int posicionPuerta = puertaCerrada;
+
+// Prototipos explicitos para Arduino IDE y el analizador C++ de VS Code.
+void leerComandosSeriales();
+void iniciarAcceso();
+void actualizarSecuenciaAcceso();
+void moverPuertas(int posicion);
 
 void setup() {
   Serial.begin(9600);
