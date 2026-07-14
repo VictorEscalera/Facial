@@ -16,9 +16,14 @@ El proyecto permite:
 - cargar los modelos de `face-api` desde `src/assets/models`;
 - generar descriptores para `yo.jpeg` y `Sergio.jpeg`;
 - analizar la cámara cada 5 segundos;
-- precargar los modelos una sola vez y reutilizarlos durante la sesión;
-- mostrar un spinner no bloqueante de Ionic mientras se inicializan las redes;
-- mostrar en consola cada etapa del reconocimiento y la distancia obtenida;
+- cargar `face-api` de forma diferida y reutilizar los modelos durante la sesión;
+- ejecutar TensorFlow.js sobre WebAssembly, con CPU como respaldo, para evitar
+  agotamiento de memoria y pérdida del contexto WebGL;
+- mostrar exclusivamente un spinner y un texto mientras se preparan las redes
+  e identidades;
+- crear y encender la cámara solamente cuando la IA está completamente lista;
+- mostrar en consola el backend, tiempos, memoria, etapas del reconocimiento y
+  distancia obtenida;
 - reconocer más de un usuario con un umbral de distancia de `0.5`;
 - solicitar una sola apertura mientras el mismo rostro permanece en cámara;
 - permitir otra apertura cuando el rostro sale del cuadro y vuelve a entrar;
@@ -27,15 +32,15 @@ El proyecto permite:
 - impedir órdenes duplicadas mientras el Arduino está ocupado;
 - apagar la cámara y detener el ciclo al abandonar la pantalla.
 
-La compilación Angular y la compilación Android de depuración han sido
-verificadas correctamente.
+La compilación Angular, el lint, la compilación Android de depuración y el
+firmware para Arduino Uno han sido verificados correctamente.
 
 ## Arquitectura
 
 ```mermaid
 flowchart LR
     A[Cámara] --> B[Ionic + Angular]
-    B --> C[face-api.js]
+    B --> C[face-api.js + TensorFlow WASM]
     C -->|rostro autorizado| D[POST /abrir-puerta]
     D --> E[Puente Node.js]
     E -->|comando A por serial| F[Arduino]
@@ -50,6 +55,7 @@ flowchart LR
 - Ionic 8
 - Capacitor 8
 - `@vladmandic/face-api` 1.7
+- `@tensorflow/tfjs-backend-wasm` 4.22
 - Node.js 22.12 o superior
 - Express 5
 - SerialPort 13
@@ -66,6 +72,9 @@ Capacitor 8 requiere Node.js 22 o superior. Se recomienda Node.js 22 LTS.
 Facial/
 ├─ src/
 │  ├─ app/inicio/                  Reconocimiento facial y acceso
+│  ├─ app/services/
+│  │  └─ face-recognition.service.ts
+│  │                                  Backend, modelos y caché en memoria
 │  └─ assets/
 │     ├─ images/                   Rostros de referencia
 │     └─ models/                   Modelos locales de face-api
@@ -153,7 +162,13 @@ Los siguientes archivos de modelos deben permanecer en
 - Face Landmark 68;
 - Face Recognition.
 
-La aplicación los sirve en tiempo de ejecución desde `/assets/models`.
+La aplicación los sirve en tiempo de ejecución desde la ruta relativa
+`assets/models`, compatible con el navegador y Capacitor.
+
+Los binarios de TensorFlow WASM se copian automáticamente desde
+`node_modules/@tensorflow/tfjs-backend-wasm/dist` hacia
+`assets/tfjs-wasm` durante la compilación. No es necesario copiarlos
+manualmente.
 
 ## 3. Probar únicamente la IA en navegador
 
@@ -172,10 +187,16 @@ http://localhost:4200
 Autoriza el acceso a la cámara y abre las herramientas del navegador con
 `F12`. Los mensajes de diagnóstico incluyen:
 
+- `Backend TensorFlow listo: wasm`;
 - `Modelos cargados`;
 - `Descriptores extraídos`;
+- `Inferencia de cámara completada`;
 - `Rostro detectado en cámara`;
 - `Distancia de coincidencia`.
+
+Durante la inicialización únicamente se muestra el spinner con el mensaje de
+carga. El encabezado, la tarjeta de estado y la cámara se renderizan después de
+que los modelos y los descriptores están listos.
 
 Sin el puente Arduino activo, el reconocimiento seguirá funcionando, pero una
 coincidencia mostrará un error de hardware al intentar abrir la puerta.
@@ -222,6 +243,10 @@ El sketch inicia a 9600 baudios y debe enviar:
 ```text
 LISTO
 ```
+
+El archivo incluye `Arduino.h` y prototipos explícitos para que también pueda
+ser analizado correctamente por IntelliSense de VS Code. Fue compilado para
+`arduino:avr:uno` usando la librería `Servo` 1.3.0.
 
 ### Calibración
 
@@ -481,6 +506,12 @@ arduino-cli lib install Servo
 El subrayado de VS Code puede ser solo IntelliSense. La comprobación definitiva
 es compilar desde Arduino IDE o `arduino-cli`.
 
+Si la librería ya está instalada y el sketch compila, restablecer el analizador
+de VS Code:
+
+1. ejecutar **C/C++: Reset IntelliSense Database** desde la paleta de comandos;
+2. ejecutar **Developer: Reload Window**.
+
 ### `Opening COM3: Access denied`
 
 El puerto serial solo puede ser usado por un proceso a la vez.
@@ -508,6 +539,23 @@ El puente espera el mensaje `LISTO`. Confirmar que:
 - comprobar que exista `src/assets/models`;
 - abrir la aplicación mediante `npm start`, no directamente como archivo;
 - revisar la pestaña **Network** del navegador.
+
+### `GL_OUT_OF_MEMORY`, shaders o `CONTEXT_LOST_WEBGL`
+
+La aplicación selecciona explícitamente el backend `wasm` antes de cargar los
+modelos y utiliza `cpu` como respaldo. Comprobar en la consola:
+
+```text
+[FaceAPI] Backend TensorFlow listo: wasm
+```
+
+Si aparece el respaldo CPU o falla la inicialización:
+
+- ejecutar `npm ci` desde la raíz;
+- confirmar que `assets/tfjs-wasm/tfjs-backend-wasm.wasm` responde con HTTP
+  `200` y tipo `application/wasm`;
+- reiniciar `npm start` y hacer una recarga completa del navegador;
+- no volver a forzar el backend `webgl` en otro archivo.
 
 ### No se extrae un descriptor de referencia
 
@@ -547,8 +595,13 @@ Git.
 - agregados registros de diagnóstico para modelos, descriptores, detecciones y
   distancias;
 - movido el escaneo fuera de Angular `NgZone`;
-- agregada precarga singleton de modelos y caché en memoria del `FaceMatcher`;
-- agregado `ion-spinner` no bloqueante durante la preparación de la IA;
+- agregada carga diferida singleton de face-api, modelos y `FaceMatcher`;
+- agregado backend TensorFlow WASM con respaldo CPU para evitar errores de GPU;
+- agregados tiempos de carga, inferencia y diagnóstico de memoria de tensores;
+- reemplazada la carga superpuesta por una pantalla exclusiva con
+  `ion-spinner` y texto;
+- retrasado el renderizado y encendido de la cámara hasta terminar modelos y
+  descriptores;
 - agregada limpieza del intervalo y de las pistas de cámara;
 - agregado `muted` al video para compatibilidad con autoplay;
 - evitadas inferencias y órdenes de apertura simultáneas;
@@ -556,6 +609,9 @@ Git.
 - agregado puente HTTP con CORS, estado de hardware y timeout;
 - agregado protocolo serial con confirmación de secuencia completa;
 - convertido el firmware a una máquina de estados no bloqueante;
+- agregados `Arduino.h` y prototipos explícitos para compatibilidad con
+  IntelliSense;
+- verificado el firmware con Arduino AVR/Uno y `Servo` 1.3.0;
 - agregado cierre automático y control de dos servos de puerta;
 - movido el sketch a `puente-arduino/control_puerta`;
 - separadas las dependencias Node del puente respecto a la app Ionic;
