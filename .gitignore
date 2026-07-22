@@ -44,6 +44,10 @@ pnpm-debug.log*
 !.env.*.example
 *.local
 
+# Local biometric reference images
+/src/assets/images/yo.jpeg
+/src/assets/images/Sergio.jpeg
+
 # Local SDK configuration and signing credentials
 local.properties
 *.jks
