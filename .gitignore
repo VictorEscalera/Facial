@@ -34,6 +34,10 @@ log.txt
 npm-debug.log
 yarn-error.log
 
+# Local biometric reference images
+/src/assets/images/yo.jpeg
+/src/assets/images/Sergio.jpeg
+
 # IDEs and editors
 .idea/
 .project
