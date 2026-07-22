@@ -1,11 +1,13 @@
 import { AfterViewInit, Component, inject, NgZone, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
 import type * as FaceApi from '@vladmandic/face-api';
 import { addIcons } from 'ionicons';
-import { scanOutline } from 'ionicons/icons';
+import { logOutOutline, scanOutline } from 'ionicons/icons';
 import { Capacitor } from '@capacitor/core';
 import { FaceRecognitionService } from '../services/face-recognition.service';
+import { AuthService } from '../services/auth.service';
 
 type FaceApiModule = typeof import('@vladmandic/face-api');
 
@@ -24,6 +26,9 @@ export class InicioPage implements AfterViewInit, OnDestroy {
   public matchResult = signal<string>('');
   private readonly ngZone = inject(NgZone);
   private readonly faceRecognition = inject(FaceRecognitionService);
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  readonly usuarioSesion = this.authService.usuario;
   private streamCamara: MediaStream | null = null;
   private faceApi: FaceApiModule | null = null;
   
@@ -40,7 +45,7 @@ export class InicioPage implements AfterViewInit, OnDestroy {
 
   constructor() {
     // Evitamos el colapso de la URL inyectando el ícono en memoria
-    addIcons({ scanOutline });
+    addIcons({ scanOutline, logOutOutline });
   }
 
   async ngAfterViewInit() {
@@ -278,6 +283,7 @@ export class InicioPage implements AfterViewInit, OnDestroy {
         .detectAllFaces(videoCamara)
         .withFaceLandmarks()
         .withFaceDescriptors();
+      this.limpiarCanvasDetecciones();
       console.log('[FaceAPI] Inferencia de cámara completada:', {
         rostros: deteccionesVivo.length,
         tiempoMs: Math.round(performance.now() - inicioInferencia)
@@ -303,6 +309,27 @@ export class InicioPage implements AfterViewInit, OnDestroy {
       const coincidencias = deteccionesVivo.map(deteccion =>
         this.faceMatcher!.findBestMatch(deteccion.descriptor)
       );
+
+      const canvas = document.getElementById('canvasDetecciones') as HTMLCanvasElement | null;
+      if (canvas) {
+        const dimensiones = {
+          width: videoCamara.videoWidth,
+          height: videoCamara.videoHeight
+        };
+        faceapi.matchDimensions(canvas, dimensiones);
+        const deteccionesRedimensionadas = faceapi.resizeResults(deteccionesVivo, dimensiones);
+
+        deteccionesRedimensionadas.forEach((deteccion, indice) => {
+          const coincidenciaActual = coincidencias[indice];
+          const reconocido = coincidenciaActual.label !== 'unknown';
+          const etiqueta = reconocido ? coincidenciaActual.label : 'Desconocido';
+          const caja = new faceapi.draw.DrawBox(deteccion.detection.box, {
+            label: etiqueta,
+            boxColor: reconocido ? '#00e676' : '#ff1744'
+          });
+          caja.draw(canvas);
+        });
+      }
       coincidencias.forEach((coincidencia, indice) => {
         console.log('[FaceAPI] Distancia de coincidencia:', {
           rostro: indice + 1,
@@ -317,6 +344,9 @@ export class InicioPage implements AfterViewInit, OnDestroy {
       );
 
       if (coincidencia.label !== 'unknown') {
+        if (!this.authService.estaAutenticado()) {
+          this.authService.iniciarSesionFacial(coincidencia.label);
+        }
         this.ngZone.run(() => {
           this.matchResult.set('¡ACCESO EXITOSO!');
           this.statusMessage.set(`Identidad verificada: ${coincidencia.label}.`);
@@ -396,6 +426,20 @@ export class InicioPage implements AfterViewInit, OnDestroy {
     }
   }
 
+  cerrarSesion(): void {
+    this.vistaActiva = false;
+    this.detenerReconocimiento();
+    this.authService.cerrarSesion();
+    void this.router.navigate(['/login'], { replaceUrl: true });
+  }
+
+  private limpiarCanvasDetecciones(): void {
+    const canvas = document.getElementById('canvasDetecciones') as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const contexto = canvas.getContext('2d');
+    contexto?.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
   apagarCamara() {
     if (this.streamCamara) {
       this.streamCamara.getTracks().forEach(track => track.stop());
@@ -406,5 +450,6 @@ export class InicioPage implements AfterViewInit, OnDestroy {
     if (videoElement) {
       videoElement.srcObject = null;
     }
+    this.limpiarCanvasDetecciones();
   }
 }

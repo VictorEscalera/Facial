@@ -43,22 +43,6 @@ ion-card {
     text-shadow: 0 0 10px rgba(98, 0, 238, 0.6);
   }
 
-  // Estilo para el video de la cámara con efecto de escáner
-  video {
-    box-shadow: 0 0 20px rgba(98, 0, 238, 0.4), 
-                inset 0 0 15px rgba(98, 0, 238, 0.4) !important;
-    border: 2px solid rgba(123, 44, 191, 0.8) !important;
-    transition: all 0.3s ease-in-out;
-
-    // Efecto de pulso suave cuando está encendida
-    animation: pulse-border 2s infinite alternate;
-  }
-}
-
-// Animación del borde de la cámara
-@keyframes pulse-border {
-  0% { box-shadow: 0 0 15px rgba(98, 0, 238, 0.3); }
-  100% { box-shadow: 0 0 30px rgba(123, 44, 191, 0.7); }
 }
 
 // ==========================================

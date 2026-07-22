@@ -2,6 +2,14 @@
   <ion-header>
     <ion-toolbar color="dark">
       <ion-title>AppFacial - IA Access</ion-title>
+      <ion-buttons slot="end">
+        @if (usuarioSesion(); as usuario) {
+          <span class="session-user">{{ usuario.nombre }}</span>
+        }
+        <ion-button aria-label="Cerrar sesión" (click)="cerrarSesion()">
+          <ion-icon name="log-out-outline" slot="icon-only"></ion-icon>
+        </ion-button>
+      </ion-buttons>
     </ion-toolbar>
   </ion-header>
 }
@@ -33,14 +41,17 @@
       <div class="container-imagenes">
         <div>
           <h5>Sensor IA Activo</h5>
-          <video
-            id="videoCamara"
-            autoplay
-            playsinline
-            muted
-            width="250"
-            height="250">
-          </video>
+          <div class="camera-frame">
+            <video
+              id="videoCamara"
+              autoplay
+              playsinline
+              muted
+              width="250"
+              height="250">
+            </video>
+            <canvas id="canvasDetecciones" aria-hidden="true"></canvas>
+          </div>
         </div>
       </div>
 

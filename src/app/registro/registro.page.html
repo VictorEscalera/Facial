@@ -30,8 +30,13 @@
             <ion-input formControlName="confirmPassword" type="password" placeholder="Confirmar contraseña"></ion-input>
           </ion-item>
 
-          <ion-button type="submit" expand="block" shape="round" class="main-btn" [disabled]="!registroForm.valid">
-            Registrarse
+          <ion-button
+            type="submit"
+            expand="block"
+            shape="round"
+            class="main-btn"
+            [disabled]="!registroForm.valid || enviando">
+            {{ enviando ? 'Registrando...' : 'Registrarse' }}
           </ion-button>
           
           <div class="divider">o</div>

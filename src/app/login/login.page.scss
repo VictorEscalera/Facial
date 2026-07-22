@@ -1,3 +1,53 @@
 :host(.ion-page-hidden) {
   display: none !important;
 }
+
+.auth-bg {
+  --background: linear-gradient(145deg, #071126 0%, #102a43 48%, #07111f 100%);
+}
+
+.auth-container::before,
+.auth-container::after {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  width: 55vw;
+  height: 55vw;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+.auth-container::before {
+  top: -18vw;
+  left: -16vw;
+  background: #00a8ff;
+}
+
+.auth-container::after {
+  right: -18vw;
+  bottom: -20vw;
+  background: #6c3cff;
+}
+
+.field-error {
+  margin: -8px 10px 12px;
+  color: #fda4af;
+  font-size: 0.78rem;
+  text-align: left;
+}
+
+.face-btn {
+  --border-color: rgba(56, 189, 248, 0.75);
+  --color: #7dd3fc;
+  --background-activated: rgba(56, 189, 248, 0.12);
+  min-height: 48px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+ion-spinner {
+  width: 20px;
+  height: 20px;
+}

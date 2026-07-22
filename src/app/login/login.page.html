@@ -3,35 +3,76 @@
     <div class="logo-container">
       <ion-icon name="scan-circle-outline" class="main-icon"></ion-icon>
       <h1>AppFacial</h1>
-      <p>Acceso al Sistema</p>
+      <p>Acceso al sistema</p>
     </div>
 
-    <form [formGroup]="loginForm" (ngSubmit)="iniciarSesion()">
-  <ion-card class="glass-card">
-    <ion-card-content class="auth-content">
-      
-      <ion-item lines="none" class="custom-input">
-        <ion-icon name="mail-outline" slot="start"></ion-icon>
-        <ion-input formControlName="email" type="email" placeholder="Correo electrónico"></ion-input>
-      </ion-item>
+    <form [formGroup]="loginForm" (ngSubmit)="iniciarSesion()" novalidate>
+      <ion-card class="glass-card">
+        <ion-card-content class="auth-content">
+          <ion-item lines="none" class="custom-input">
+            <ion-icon name="mail-outline" slot="start"></ion-icon>
+            <ion-input
+              formControlName="email"
+              type="email"
+              autocomplete="email"
+              placeholder="Correo electrónico">
+            </ion-input>
+          </ion-item>
+          @if (loginForm.controls.email.touched && loginForm.controls.email.invalid) {
+            <p class="field-error">Ingresa un correo electrónico válido.</p>
+          }
 
-      <ion-item lines="none" class="custom-input">
-        <ion-icon name="lock-closed-outline" slot="start"></ion-icon>
-        <ion-input formControlName="password" type="password" placeholder="Contraseña"></ion-input>
-      </ion-item>
+          <ion-item lines="none" class="custom-input">
+            <ion-icon name="lock-closed-outline" slot="start"></ion-icon>
+            <ion-input
+              formControlName="password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="Contraseña">
+            </ion-input>
+          </ion-item>
+          @if (loginForm.controls.password.touched && loginForm.controls.password.invalid) {
+            <p class="field-error">La contraseña debe tener al menos 6 caracteres.</p>
+          }
 
-      <ion-button type="submit" expand="block" shape="round" class="main-btn" [disabled]="!loginForm.valid">
-        Ingresar
-      </ion-button>
-      
-       <div class="divider">o</div>
+          <ion-button
+            type="submit"
+            expand="block"
+            shape="round"
+            class="main-btn"
+            [disabled]="enviando">
+            @if (enviando) {
+              <ion-spinner name="crescent" slot="start"></ion-spinner>
+              Verificando...
+            } @else {
+              Ingresar
+            }
+          </ion-button>
 
-      <ion-button expand="block" fill="clear" class="link-btn" routerLink="/registro" routerDirection="forward">
-          ¿No tienes cuenta? Regístrate
-        </ion-button>
-      
-    </ion-card-content>
-  </ion-card>
+          <div class="divider">o</div>
+
+          <ion-button
+            type="button"
+            expand="block"
+            fill="outline"
+            shape="round"
+            class="face-btn"
+            [disabled]="enviando"
+            (click)="iniciarAccesoFacial()">
+            <ion-icon name="scan-outline" slot="start"></ion-icon>
+            Usar acceso facial
+          </ion-button>
+
+          <ion-button
+            expand="block"
+            fill="clear"
+            class="link-btn"
+            routerLink="/registro"
+            routerDirection="forward">
+            ¿No tienes cuenta? Regístrate
+          </ion-button>
+        </ion-card-content>
+      </ion-card>
     </form>
   </div>
 </ion-content>

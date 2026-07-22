@@ -1,23 +1,20 @@
 import { Component, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
-import { HttpClient, HttpClientModule } from '@angular/common/http';
-
-// CORRECCIÓN: Todo importado estrictamente desde /standalone
-import { 
-  IonContent, 
-  IonCard, 
-  IonCardContent, 
-  IonItem, 
-  IonIcon, 
-  IonInput, 
+import { ReactiveFormsModule, FormControl, FormGroup, Validators } from '@angular/forms';
+import {
   IonButton,
-  NavController,
-  ToastController // <-- Ahora sí importado correctamente como componente standalone
+  IonCard,
+  IonCardContent,
+  IonContent,
+  IonIcon,
+  IonInput,
+  IonItem,
+  IonSpinner,
+  ToastController
 } from '@ionic/angular/standalone';
-
 import { addIcons } from 'ionicons';
-import { scanCircleOutline, mailOutline, lockClosedOutline } from 'ionicons/icons';
+import { lockClosedOutline, mailOutline, scanCircleOutline, scanOutline } from 'ionicons/icons';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -27,64 +24,75 @@ import { scanCircleOutline, mailOutline, lockClosedOutline } from 'ionicons/icon
   imports: [
     RouterLink,
     ReactiveFormsModule,
-    HttpClientModule,
-    IonContent, 
-    IonCard, 
-    IonCardContent, 
-    IonItem, 
-    IonIcon, 
-    IonInput, 
-    IonButton
-  ] 
+    IonContent,
+    IonCard,
+    IonCardContent,
+    IonItem,
+    IonIcon,
+    IonInput,
+    IonButton,
+    IonSpinner
+  ]
 })
 export class LoginPage {
-  private router = inject(Router);
-  private navCtrl = inject(NavController); 
-  private http = inject(HttpClient); 
-  private toastController = inject(ToastController); // <-- Inyección standalone limpia
+  private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
+  private readonly toastController = inject(ToastController);
 
-  private API_URL = 'https://app-facial.vercel.app/login';
+  enviando = false;
 
-  loginForm = new FormGroup({
-    email: new FormControl(''),
-    password: new FormControl('')
+  readonly loginForm = new FormGroup({
+    email: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.email]
+    }),
+    password: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.minLength(6)]
+    })
   });
 
   constructor() {
-    addIcons({ scanCircleOutline, mailOutline, lockClosedOutline });
+    addIcons({ scanCircleOutline, scanOutline, mailOutline, lockClosedOutline });
   }
 
-  iniciarSesion() {
-    const correoIngresado = this.loginForm.value.email;
-    const passwordIngresado = this.loginForm.value.password;
-    
-    if (!correoIngresado) {
-      this.router.navigate(['/inicio'], { queryParams: { usuario: 'Administrador' } });
+  iniciarSesion(): void {
+    if (this.loginForm.invalid || this.enviando) {
+      this.loginForm.markAllAsTouched();
       return;
     }
 
-    const credenciales = {
-      email: correoIngresado,
-      password: passwordIngresado
-    };
+    const { email, password } = this.loginForm.getRawValue();
+    this.enviando = true;
 
-    this.http.post(this.API_URL, credenciales).subscribe({
-      next: async (respuesta: any) => {
-        await this.mostrarMensaje(respuesta.mensaje, 'success');
-        this.router.navigate(['/inicio'], { queryParams: { usuario: respuesta.usuario } });
+    this.authService.login(email, password).subscribe({
+      next: async respuesta => {
+        this.enviando = false;
+        await this.mostrarMensaje(
+          respuesta.mensaje || 'Sesión iniciada correctamente',
+          'success'
+        );
+        await this.router.navigate(['/inicio']);
       },
-      error: async (err) => {
+      error: async err => {
+        this.enviando = false;
         const mensajeError = err.error?.error || 'Error al conectar con el servidor';
         await this.mostrarMensaje(mensajeError, 'danger');
       }
     });
   }
 
-  async mostrarMensaje(mensaje: string, color: string) {
+  iniciarAccesoFacial(): void {
+    if (this.enviando) return;
+    this.authService.cerrarSesion();
+    void this.router.navigate(['/inicio'], { queryParams: { modo: 'facial' } });
+  }
+
+  private async mostrarMensaje(mensaje: string, color: string): Promise<void> {
     const toast = await this.toastController.create({
       message: mensaje,
       duration: 2000,
-      color: color,
+      color,
       position: 'top'
     });
     await toast.present();
