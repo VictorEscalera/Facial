@@ -1,6 +1,10 @@
+<div class="facescan-bg"></div>
+<div class="facescan-bg facescan-bg--second"></div>
+<div class="facescan-bg facescan-bg--third"></div>
+
 @if (isRecognitionReady()) {
   <ion-header>
-    <ion-toolbar color="dark">
+    <ion-toolbar>
       <ion-title>AppFacial - IA Access</ion-title>
       <ion-buttons slot="end">
         @if (usuarioSesion(); as usuario) {
@@ -32,7 +36,7 @@
     </section>
   } @else if (isRecognitionReady()) {
     <div class="recognition-interface ion-padding">
-      <ion-card>
+      <ion-card class="glass-card status-card">
         <ion-card-content>
           <p>{{ statusMessage() }}</p>
         </ion-card-content>

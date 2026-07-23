@@ -3,20 +3,12 @@
 }
 
 .auth-bg {
-  --background: linear-gradient(145deg, #071126 0%, #102a43 48%, #07111f 100%);
+  --background: transparent;
 }
 
 .auth-container::before,
 .auth-container::after {
-  content: '';
-  position: fixed;
-  z-index: -1;
-  width: 55vw;
-  height: 55vw;
-  border-radius: 50%;
-  filter: blur(70px);
-  opacity: 0.25;
-  pointer-events: none;
+  display: none;
 }
 
 .auth-container::before {
@@ -33,15 +25,15 @@
 
 .field-error {
   margin: -8px 10px 12px;
-  color: #fda4af;
+  color: #c62828;
   font-size: 0.78rem;
   text-align: left;
 }
 
 .face-btn {
-  --border-color: rgba(56, 189, 248, 0.75);
-  --color: #7dd3fc;
-  --background-activated: rgba(56, 189, 248, 0.12);
+  --border-color: rgba(0, 153, 255, 0.75);
+  --color: #008de8;
+  --background-activated: rgba(0, 153, 255, 0.1);
   min-height: 48px;
   font-weight: 700;
   letter-spacing: 0.3px;
