@@ -1,0 +1,62 @@
+<ion-header>
+  <ion-toolbar color="dark">
+    <ion-buttons slot="start">
+      <ion-button aria-label="Volver al login" (click)="volver()">
+        <ion-icon name="arrow-back-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>Inicio de sesión facial</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-text-center">
+  <div class="face-reference-images" aria-hidden="true">
+    <img id="loginImagenUsuario" src="assets/images/yo.jpeg" crossorigin="anonymous" />
+    <img id="loginImagenSergio" src="assets/images/Sergio.jpeg" crossorigin="anonymous" />
+  </div>
+
+  @if (cargando()) {
+    <section class="neural-loading-panel" role="status" aria-live="polite">
+      <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
+      <p>{{ mensaje() }}</p>
+    </section>
+  } @else if (lista()) {
+    <main class="login-facial-interface ion-padding">
+      <ion-card>
+        <ion-card-content>
+          <p>{{ mensaje() }}</p>
+        </ion-card-content>
+      </ion-card>
+
+      <h5>Reconocimiento para iniciar sesión</h5>
+      <div class="camera-frame-login">
+        <video
+          id="videoLoginFacial"
+          autoplay
+          playsinline
+          muted
+          width="250"
+          height="250">
+        </video>
+        <canvas id="canvasLoginFacial" aria-hidden="true"></canvas>
+      </div>
+
+      <div class="login-scan-status ion-margin-top">
+        <ion-icon name="scan-outline"></ion-icon>
+        Verificando identidad...
+      </div>
+
+      @if (resultado()) {
+        <div
+          class="login-result ion-margin-top"
+          [class.login-result--success]="resultado() === 'IDENTIDAD VERIFICADA'">
+          {{ resultado() }}
+        </div>
+      }
+    </main>
+  } @else {
+    <section class="initialization-error" role="alert">
+      <p>{{ mensaje() }}</p>
+    </section>
+  }
+</ion-content>

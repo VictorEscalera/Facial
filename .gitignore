@@ -60,6 +60,7 @@ keystore.properties
 
 # Gradle and native build caches
 **/.gradle/
+**/.kotlin/
 **/.cxx/
 
 # Arduino and PlatformIO generated files

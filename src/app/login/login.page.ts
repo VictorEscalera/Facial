@@ -85,7 +85,7 @@ export class LoginPage {
   iniciarAccesoFacial(): void {
     if (this.enviando) return;
     this.authService.cerrarSesion();
-    void this.router.navigate(['/inicio'], { queryParams: { modo: 'facial' } });
+    void this.router.navigate(['/login-facial']);
   }
 
   private async mostrarMensaje(mensaje: string, color: string): Promise<void> {

@@ -40,24 +40,24 @@
 
       <div class="container-imagenes">
         <div>
-          <h5>Sensor IA Activo</h5>
-          <div class="camera-frame">
+          <h5>Reconocimiento para abrir la puerta</h5>
+          <div class="camera-frame camera-frame--puerta">
             <video
-              id="videoCamara"
+              id="videoPuerta"
               autoplay
               playsinline
               muted
               width="250"
               height="250">
             </video>
-            <canvas id="canvasDetecciones" aria-hidden="true"></canvas>
+            <canvas id="canvasPuerta" aria-hidden="true"></canvas>
           </div>
         </div>
       </div>
 
       <div class="scan-status ion-margin-top">
         <ion-icon name="scan-outline"></ion-icon>
-        Escaneando el entorno cada 5s...
+        Escaneando el entorno continuamente...
       </div>
 
       @if (matchResult()) {
