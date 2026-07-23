@@ -18,6 +18,8 @@ El proyecto permite:
   `localStorage`;
 - registrar usuarios mediante el endpoint `/register` del backend existente;
 - elegir desde el login entre credenciales y el flujo de acceso facial;
+- reutilizar en login, registro e inicio la identidad visual de FaceScan: fondo
+  animado verde/azul, tarjetas claras tipo glass, paleta azul y logo;
 - cargar los modelos de `face-api` desde `src/assets/models`;
 - generar descriptores para `yo.jpeg` y `Sergio.jpeg`;
 - analizar la cámara cada 5 segundos;
@@ -60,6 +62,33 @@ flowchart LR
     E -->|resultado HTTP| B
 ```
 
+## Sesión y protección de navegación
+
+`AuthService` centraliza el login, el registro y el estado de la sesión. Al
+iniciar con credenciales o reconocimiento facial guarda en `localStorage` los
+datos mínimos del usuario y el método de acceso. Al recargar la aplicación,
+restaura esos datos y los expone mediante una señal de solo lectura.
+
+La pantalla `InicioPage` llama a `AuthService.estaAutenticado()` antes de cargar
+los modelos o encender la cámara. Si no existe una sesión, redirige a `/login`.
+Actualmente no hay un `AuthGuard` conectado a `app.routes.ts`; la protección se
+realiza dentro de la pantalla. Puede añadirse posteriormente para impedir la
+creación de la ruta antes de ejecutar `InicioPage`, manteniendo la comprobación
+actual como respaldo.
+
+## Identidad visual FaceScan
+
+Login, registro e inicio comparten la identidad visual importada del prototipo
+FaceScan. El fondo animado verde/azul se compone con tres capas
+`.facescan-bg`, el logo común se carga desde `src/assets/adanlogo.png` y las
+tarjetas, campos y botones reutilizan las clases globales `.glass-card`,
+`.custom-input`, `.main-btn`, `.link-btn` y `.divider`.
+
+Los estilos base están en `src/global.scss` para mantener consistencia entre
+pantallas. Los SCSS específicos de cada página sólo deberían contener ajustes
+locales, por ejemplo estados de error, botones secundarios o detalles propios
+del reconocimiento facial.
+
 ## Tecnologías y versiones principales
 
 - Angular 20
@@ -89,9 +118,10 @@ Facial/
 │  │  ├─ auth.service.ts           Backend y persistencia de sesión
 │  │  └─ face-recognition.service.ts
 │  │                                  Modelos y caché facial en memoria
-│  └─ assets/
+│  ├─ assets/
 │     ├─ images/                   Rostros locales; los personales se ignoran
 │     └─ models/                   Modelos locales de face-api
+│  └─ global.scss                  Identidad visual compartida FaceScan
 ├─ puente-arduino/
 │  ├─ index.js                     Servidor HTTP y conexión serial
 │  ├─ package.json                 Dependencias exclusivas del puente
@@ -233,6 +263,13 @@ Abrir:
 ```text
 http://localhost:4200
 ```
+
+El servidor de desarrollo Ionic/Angular puede iniciar y mostrar la interfaz sin
+levantar un backend local. El login por credenciales y el registro sí requieren
+acceso al backend remoto configurado en `AuthService`
+(`https://app-facial.vercel.app`). El acceso facial y la carga de modelos usan
+recursos locales. El puente Node.js sólo es necesario cuando se quiere ejecutar
+la apertura física de la puerta.
 
 Autoriza el acceso a la cámara y abre las herramientas del navegador con
 `F12`. Los mensajes de diagnóstico incluyen:
@@ -640,6 +677,11 @@ Git.
 
 ## Cambios acumulados en esta versión
 
+- integrada la identidad visual de FaceScan en login, registro e inicio;
+- agregado `src/assets/adanlogo.png` y utilizado como marca en las pantallas de
+  autenticación;
+- unificados el fondo animado, las tarjetas glass, la paleta azul y los estilos
+  responsivos sin reemplazar la lógica de formularios, sesión o cámara;
 - centralizado el acceso al backend y la sesión en `AuthService`;
 - conectado el login con `/login` y el registro con `/register`;
 - agregada persistencia de los datos mínimos de sesión en `localStorage`;
