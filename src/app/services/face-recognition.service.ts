@@ -76,8 +76,8 @@ export class FaceRecognitionService {
   }
 
   private modelosCargados(faceapi: FaceApiModule): boolean {
-    return faceapi.nets.ssdMobilenetv1.isLoaded
-      && faceapi.nets.faceLandmark68Net.isLoaded
+    return faceapi.nets.tinyFaceDetector.isLoaded
+      && faceapi.nets.faceLandmark68TinyNet.isLoaded
       && faceapi.nets.faceRecognitionNet.isLoaded;
   }
 
@@ -134,11 +134,11 @@ export class FaceRecognitionService {
     console.log('[FaceAPI] Cargando modelos desde:', this.modelUrl);
     const cargas: Promise<void>[] = [];
 
-    if (!faceapi.nets.ssdMobilenetv1.isLoaded) {
-      cargas.push(faceapi.nets.ssdMobilenetv1.loadFromUri(this.modelUrl));
+    if (!faceapi.nets.tinyFaceDetector.isLoaded) {
+      cargas.push(faceapi.nets.tinyFaceDetector.loadFromUri(this.modelUrl));
     }
-    if (!faceapi.nets.faceLandmark68Net.isLoaded) {
-      cargas.push(faceapi.nets.faceLandmark68Net.loadFromUri(this.modelUrl));
+    if (!faceapi.nets.faceLandmark68TinyNet.isLoaded) {
+      cargas.push(faceapi.nets.faceLandmark68TinyNet.loadFromUri(this.modelUrl));
     }
     if (!faceapi.nets.faceRecognitionNet.isLoaded) {
       cargas.push(faceapi.nets.faceRecognitionNet.loadFromUri(this.modelUrl));

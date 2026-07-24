@@ -11,6 +11,7 @@ $RECYCLE.BIN/
 
 *.log
 log.txt
+*.hprof
 
 
 /.sourcemaps
@@ -59,6 +60,7 @@ keystore.properties
 
 # Gradle and native build caches
 **/.gradle/
+**/.kotlin/
 **/.cxx/
 
 # Arduino and PlatformIO generated files

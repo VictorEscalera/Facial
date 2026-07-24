@@ -1,11 +1,13 @@
 import { AfterViewInit, Component, inject, NgZone, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
 import type * as FaceApi from '@vladmandic/face-api';
 import { addIcons } from 'ionicons';
-import { scanOutline } from 'ionicons/icons';
+import { logOutOutline, scanOutline } from 'ionicons/icons';
 import { Capacitor } from '@capacitor/core';
 import { FaceRecognitionService } from '../services/face-recognition.service';
+import { AuthService } from '../services/auth.service';
 
 type FaceApiModule = typeof import('@vladmandic/face-api');
 
@@ -24,6 +26,9 @@ export class InicioPage implements AfterViewInit, OnDestroy {
   public matchResult = signal<string>('');
   private readonly ngZone = inject(NgZone);
   private readonly faceRecognition = inject(FaceRecognitionService);
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  readonly usuarioSesion = this.authService.usuario;
   private streamCamara: MediaStream | null = null;
   private faceApi: FaceApiModule | null = null;
   
@@ -37,13 +42,20 @@ export class InicioPage implements AfterViewInit, OnDestroy {
   private accesoEnCurso = false;
   private accesoSolicitadoParaRostroActual = false;
   private readonly ipPuenteEnDispositivo = '192.168.120.49';
+  private readonly intervaloEscaneoMs = 1500;
 
   constructor() {
     // Evitamos el colapso de la URL inyectando el ícono en memoria
-    addIcons({ scanOutline });
+    addIcons({ scanOutline, logOutOutline });
   }
 
   async ngAfterViewInit() {
+    if (!this.authService.estaAutenticado()) {
+      this.vistaActiva = false;
+      await this.router.navigate(['/login'], { replaceUrl: true });
+      return;
+    }
+
     try {
       // Cede dos frames para que Ionic pinte el indicador antes de iniciar TensorFlow.
       await this.esperarPintadoInicial();
@@ -129,13 +141,18 @@ export class InicioPage implements AfterViewInit, OnDestroy {
 
   async encenderCamara() {
     try {
-      const videoElement = document.getElementById('videoCamara') as HTMLVideoElement | null;
+      const videoElement = document.getElementById('videoPuerta') as HTMLVideoElement | null;
       if (!videoElement) {
-        throw new Error('No se encontró el elemento #videoCamara.');
+        throw new Error('No se encontró el elemento #videoPuerta.');
       }
 
       this.streamCamara = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' }
+        video: {
+          facingMode: 'user',
+          width: { ideal: 320 },
+          height: { ideal: 240 },
+          frameRate: { ideal: 15, max: 24 }
+        }
       });
       videoElement.srcObject = this.streamCamara;
       await videoElement.play();
@@ -192,9 +209,13 @@ export class InicioPage implements AfterViewInit, OnDestroy {
         await imagen.decode();
       }
 
+      const opcionesDetector = new faceapi.TinyFaceDetectorOptions({
+        inputSize: 320,
+        scoreThreshold: 0.45
+      });
       const deteccion = await faceapi
-        .detectSingleFace(imagen)
-        .withFaceLandmarks()
+        .detectSingleFace(imagen, opcionesDetector)
+        .withFaceLandmarks(true)
         .withFaceDescriptor();
 
       if (!deteccion) {
@@ -237,19 +258,24 @@ export class InicioPage implements AfterViewInit, OnDestroy {
       void this.escanearConIA();
       this.intervaloEscaneo = setInterval(() => {
         void this.escanearConIA();
-      }, 5000);
+      }, this.intervaloEscaneoMs);
     });
   }
 
   async escanearConIA() {
+    if (this.accesoEnCurso) {
+      console.log('[FaceAPI] Escaneo pausado: Arduino ejecutando la secuencia de acceso.');
+      return;
+    }
+
     if (this.escaneoEnCurso) {
       console.log('[FaceAPI] Escaneo omitido: el ciclo anterior sigue en curso.');
       return;
     }
 
-    const videoCamara = document.getElementById('videoCamara') as HTMLVideoElement | null;
+    const videoCamara = document.getElementById('videoPuerta') as HTMLVideoElement | null;
     if (!videoCamara) {
-      console.error('[FaceAPI] No se encontró el video #videoCamara.');
+      console.error('[FaceAPI] No se encontró el video #videoPuerta.');
       return;
     }
     if (!this.faceMatcher) {
@@ -273,13 +299,18 @@ export class InicioPage implements AfterViewInit, OnDestroy {
     try {
       const faceapi = this.obtenerFaceApiCargada();
       const inicioInferencia = performance.now();
+      const opcionesDetector = new faceapi.TinyFaceDetectorOptions({
+        inputSize: 224,
+        scoreThreshold: 0.45
+      });
       console.log('[FaceAPI] Escaneando video:', videoCamara.id);
       const deteccionesVivo = await faceapi
-        .detectAllFaces(videoCamara)
-        .withFaceLandmarks()
-        .withFaceDescriptors();
+        .detectSingleFace(videoCamara, opcionesDetector)
+        .withFaceLandmarks(true)
+        .withFaceDescriptor();
+      this.limpiarCanvasDetecciones();
       console.log('[FaceAPI] Inferencia de cámara completada:', {
-        rostros: deteccionesVivo.length,
+        rostros: deteccionesVivo ? 1 : 0,
         tiempoMs: Math.round(performance.now() - inicioInferencia)
       });
 
@@ -289,7 +320,7 @@ export class InicioPage implements AfterViewInit, OnDestroy {
         return;
       }
 
-      if (deteccionesVivo.length === 0) {
+      if (!deteccionesVivo) {
         console.log('[FaceAPI] No se detectó ningún rostro en cámara.');
         this.accesoSolicitadoParaRostroActual = false;
         this.ngZone.run(() => {
@@ -299,10 +330,34 @@ export class InicioPage implements AfterViewInit, OnDestroy {
         return;
       }
 
-      console.log('[FaceAPI] Rostro detectado en cámara:', deteccionesVivo.length);
-      const coincidencias = deteccionesVivo.map(deteccion =>
-        this.faceMatcher!.findBestMatch(deteccion.descriptor)
-      );
+      console.log('[FaceAPI] Rostro detectado en cámara.');
+      const coincidencias = [this.faceMatcher.findBestMatch(deteccionesVivo.descriptor)];
+
+      const canvas = document.getElementById('canvasPuerta') as HTMLCanvasElement | null;
+      if (canvas) {
+        const dimensiones = {
+          width: videoCamara.videoWidth,
+          height: videoCamara.videoHeight
+        };
+        faceapi.matchDimensions(canvas, dimensiones);
+        const deteccionRedimensionada = faceapi.resizeResults(deteccionesVivo, dimensiones);
+
+        const coincidenciaActual = coincidencias[0];
+        const reconocido = coincidenciaActual.label !== 'unknown';
+        const etiqueta = reconocido ? coincidenciaActual.label : 'Desconocido';
+        const cajaOriginal = deteccionRedimensionada.detection.box;
+        const cajaReflejada = {
+          x: dimensiones.width - cajaOriginal.x - cajaOriginal.width,
+          y: cajaOriginal.y,
+          width: cajaOriginal.width,
+          height: cajaOriginal.height
+        };
+        const caja = new faceapi.draw.DrawBox(cajaReflejada, {
+          label: etiqueta,
+          boxColor: reconocido ? '#00e676' : '#ff1744'
+        });
+        caja.draw(canvas);
+      }
       coincidencias.forEach((coincidencia, indice) => {
         console.log('[FaceAPI] Distancia de coincidencia:', {
           rostro: indice + 1,
@@ -392,8 +447,29 @@ export class InicioPage implements AfterViewInit, OnDestroy {
         this.statusMessage.set(`Fallo de hardware: ${mensaje}`);
       });
     } finally {
+      // La respuesta del puente llega cuando Arduino confirma LISTO. A partir de
+      // ese momento se permite reconocer de nuevo el mismo rostro u otro.
+      this.accesoSolicitadoParaRostroActual = false;
       this.accesoEnCurso = false;
+
+      if (this.vistaActiva) {
+        void this.escanearConIA();
+      }
     }
+  }
+
+  cerrarSesion(): void {
+    this.vistaActiva = false;
+    this.detenerReconocimiento();
+    this.authService.cerrarSesion();
+    void this.router.navigate(['/login'], { replaceUrl: true });
+  }
+
+  private limpiarCanvasDetecciones(): void {
+    const canvas = document.getElementById('canvasPuerta') as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const contexto = canvas.getContext('2d');
+    contexto?.clearRect(0, 0, canvas.width, canvas.height);
   }
 
   apagarCamara() {
@@ -402,9 +478,10 @@ export class InicioPage implements AfterViewInit, OnDestroy {
       this.streamCamara = null;
     }
 
-    const videoElement = document.getElementById('videoCamara') as HTMLVideoElement | null;
+    const videoElement = document.getElementById('videoPuerta') as HTMLVideoElement | null;
     if (videoElement) {
       videoElement.srcObject = null;
     }
+    this.limpiarCanvasDetecciones();
   }
 }

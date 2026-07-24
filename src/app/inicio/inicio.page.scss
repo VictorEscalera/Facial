@@ -2,7 +2,7 @@
 // FONDO PRINCIPAL (ESTILO CYBERPUNK / IA)
 // ==========================================
 ion-content {
-  --background: linear-gradient(135deg, #0a0a1a 0%, #120e2b 50%, #050212 100%);
+  --background: transparent;
   color: #ffffff;
 }
 
@@ -10,17 +10,18 @@ ion-content {
 // TARJETA SUPERIOR (ESTADO DEL SISTEMA)
 // ==========================================
 ion-card {
-  background: rgba(255, 255, 255, 0.03) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 16px !important;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5) !important;
-  margin: 16px;
+  max-width: 620px;
+  margin: 16px auto;
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(15px) !important;
+  -webkit-backdrop-filter: blur(15px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 12px 36px rgba(0, 61, 102, 0.2) !important;
 
   ion-card-content {
     p {
-      color: #c9c7ff !important;
+      color: #334155 !important;
       font-size: 1.1rem;
       font-weight: 500;
       letter-spacing: 0.5px;
@@ -43,32 +44,16 @@ ion-card {
     text-shadow: 0 0 10px rgba(98, 0, 238, 0.6);
   }
 
-  // Estilo para el video de la cámara con efecto de escáner
-  video {
-    box-shadow: 0 0 20px rgba(98, 0, 238, 0.4), 
-                inset 0 0 15px rgba(98, 0, 238, 0.4) !important;
-    border: 2px solid rgba(123, 44, 191, 0.8) !important;
-    transition: all 0.3s ease-in-out;
-
-    // Efecto de pulso suave cuando está encendida
-    animation: pulse-border 2s infinite alternate;
-  }
-}
-
-// Animación del borde de la cámara
-@keyframes pulse-border {
-  0% { box-shadow: 0 0 15px rgba(98, 0, 238, 0.3); }
-  100% { box-shadow: 0 0 30px rgba(123, 44, 191, 0.7); }
 }
 
 // ==========================================
 // BOTÓN PRINCIPAL DE ESCANEO
 // ==========================================
 ion-button {
-  --background: linear-gradient(135deg, #4318ff 0%, #7b2cbf 100%) !important;
-  --background-hover: linear-gradient(135deg, #7b2cbf 0%, #9d4edd 100%) !important;
-  --border-radius: 12px !important;
-  --box-shadow: 0 4px 15px rgba(67, 24, 255, 0.4) !important;
+  --background: #0099ff !important;
+  --background-hover: #0087df !important;
+  --border-radius: 18px !important;
+  --box-shadow: 0 4px 15px rgba(0, 153, 255, 0.35) !important;
   font-weight: 700 !important;
   letter-spacing: 1px;
   height: 55px;
@@ -109,7 +94,7 @@ ion-button {
 // HEADER Y TOOLBAR
 // ==========================================
 ion-toolbar {
-  --background: rgba(10, 10, 26, 0.85) !important;
+  --background: rgba(0, 111, 184, 0.82) !important;
   backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 
@@ -119,4 +104,26 @@ ion-toolbar {
     color: #ffffff;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   }
+}
+
+.recognition-interface {
+  width: min(100%, 680px);
+  margin: 0 auto;
+}
+
+.camera-frame {
+  border-color: rgba(0, 153, 255, 0.9) !important;
+  box-shadow: 0 0 24px rgba(0, 153, 255, 0.45) !important;
+}
+
+.container-imagenes h5,
+.scan-status {
+  color: #fff !important;
+  text-shadow: 0 2px 4px rgba(0, 61, 102, 0.45);
+}
+
+.neural-loading-panel,
+.initialization-error {
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 61, 102, 0.45);
 }

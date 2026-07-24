@@ -17,6 +17,11 @@ export const routes: Routes = [
       import('./registro/registro.page').then( m => m.RegistroPage)
   },
   {
+    path: 'login-facial',
+    loadComponent: () =>
+      import('./login-facial/login-facial.page').then(m => m.LoginFacialPage)
+  },
+  {
     path: 'inicio',
     loadComponent: () => 
       import('./inicio/inicio.page').then( m => m.InicioPage)

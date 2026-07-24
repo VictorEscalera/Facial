@@ -55,6 +55,7 @@ void setup() {
 
   delay(500);
   Serial.println("LISTO");
+  Serial.println("Escribe A y presiona Enviar para abrir la puerta.");
 }
 
 void loop() {
@@ -133,6 +134,7 @@ void actualizarSecuenciaAcceso() {
           posicionPuerta--;
           moverPuertas(posicionPuerta);
         } else {
+          servoCerradura.write(cerraduraTrabada);
           inicioEstadoMs = ahora;
           estado = ESPERANDO_TRABADO;
         }
@@ -141,7 +143,6 @@ void actualizarSecuenciaAcceso() {
 
     case ESPERANDO_TRABADO:
       if (ahora - inicioEstadoMs >= pausaPestilloMs) {
-        servoCerradura.write(cerraduraTrabada);
         estado = REPOSO;
         Serial.println("LISTO");
       }

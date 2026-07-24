@@ -7,5 +7,6 @@
     "@ionic/angular/directives",
     "@ionic/angular/index.d.ts",
     "@ionic/angular/providers"
-  ]
+  ],
+  "python.terminal.activateEnvironment": false
 }

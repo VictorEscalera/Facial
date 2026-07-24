@@ -1,3 +1,45 @@
 :host(.ion-page-hidden) {
   display: none !important;
 }
+
+.auth-bg {
+  --background: transparent;
+}
+
+.auth-container::before,
+.auth-container::after {
+  display: none;
+}
+
+.auth-container::before {
+  top: -18vw;
+  left: -16vw;
+  background: #00a8ff;
+}
+
+.auth-container::after {
+  right: -18vw;
+  bottom: -20vw;
+  background: #6c3cff;
+}
+
+.field-error {
+  margin: -8px 10px 12px;
+  color: #c62828;
+  font-size: 0.78rem;
+  text-align: left;
+}
+
+.face-btn {
+  --border-color: rgba(0, 153, 255, 0.75);
+  --color: #008de8;
+  --background-activated: rgba(0, 153, 255, 0.1);
+  min-height: 48px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+ion-spinner {
+  width: 20px;
+  height: 20px;
+}

@@ -5,14 +5,21 @@ un puente HTTP local en Node.js y una puerta controlada por Arduino con tres
 servomotores.
 
 > [!WARNING]
-> Las imágenes de referencia contienen datos biométricos. No publiques este
-> repositorio ni compartas esas imágenes sin autorización de las personas
-> involucradas. El prototipo no sustituye un sistema profesional de seguridad.
+> Las imágenes de referencia contienen datos biométricos y se mantienen sólo en
+> cada equipo de desarrollo. `yo.jpeg` y `Sergio.jpeg` están excluidas mediante
+> `.gitignore`: no uses `git add -f` con ellas ni las compartas sin autorización.
+> El prototipo no sustituye un sistema profesional de seguridad.
 
 ## Estado actual
 
 El proyecto permite:
 
+- iniciar sesión mediante el backend HTTP y conservar la sesión en
+  `localStorage`;
+- registrar usuarios mediante el endpoint `/register` del backend existente;
+- elegir desde el login entre credenciales y el flujo de acceso facial;
+- reutilizar en login, registro e inicio la identidad visual de FaceScan: fondo
+  animado verde/azul, tarjetas claras tipo glass, paleta azul y logo;
 - cargar los modelos de `face-api` desde `src/assets/models`;
 - generar descriptores para `yo.jpeg` y `Sergio.jpeg`;
 - analizar la cámara cada 5 segundos;
@@ -25,12 +32,14 @@ El proyecto permite:
 - mostrar en consola el backend, tiempos, memoria, etapas del reconocimiento y
   distancia obtenida;
 - reconocer más de un usuario con un umbral de distancia de `0.5`;
+- dibujar sobre la cámara un recuadro verde o rojo con la identidad detectada;
 - solicitar una sola apertura mientras el mismo rostro permanece en cámara;
 - permitir otra apertura cuando el rostro sale del cuadro y vuelve a entrar;
 - enviar la orden de acceso a un puente HTTP local;
 - abrir, esperar 5 segundos, cerrar y volver a trabar la puerta;
 - impedir órdenes duplicadas mientras el Arduino está ocupado;
-- apagar la cámara y detener el ciclo al abandonar la pantalla.
+- apagar la cámara y detener el ciclo al abandonar la pantalla;
+- cerrar la sesión, detener el reconocimiento y volver al login de forma segura.
 
 La compilación Angular, el lint, la compilación Android de depuración y el
 firmware para Arduino Uno han sido verificados correctamente.
@@ -39,8 +48,12 @@ firmware para Arduino Uno han sido verificados correctamente.
 
 ```mermaid
 flowchart LR
-    A[Cámara] --> B[Ionic + Angular]
+    L[Login] -->|credenciales| H[Backend HTTP]
+    L -->|acceso facial| A[Cámara]
+    H --> S[Sesión local]
+    A --> B[Ionic + Angular]
     B --> C[face-api.js + TensorFlow WASM]
+    C -->|identidad verificada| S
     C -->|rostro autorizado| D[POST /abrir-puerta]
     D --> E[Puente Node.js]
     E -->|comando A por serial| F[Arduino]
@@ -48,6 +61,33 @@ flowchart LR
     F -->|ACCESO_INICIADO / PUERTA_ABIERTA / LISTO| E
     E -->|resultado HTTP| B
 ```
+
+## Sesión y protección de navegación
+
+`AuthService` centraliza el login, el registro y el estado de la sesión. Al
+iniciar con credenciales o reconocimiento facial guarda en `localStorage` los
+datos mínimos del usuario y el método de acceso. Al recargar la aplicación,
+restaura esos datos y los expone mediante una señal de solo lectura.
+
+La pantalla `InicioPage` llama a `AuthService.estaAutenticado()` antes de cargar
+los modelos o encender la cámara. Si no existe una sesión, redirige a `/login`.
+Actualmente no hay un `AuthGuard` conectado a `app.routes.ts`; la protección se
+realiza dentro de la pantalla. Puede añadirse posteriormente para impedir la
+creación de la ruta antes de ejecutar `InicioPage`, manteniendo la comprobación
+actual como respaldo.
+
+## Identidad visual FaceScan
+
+Login, registro e inicio comparten la identidad visual importada del prototipo
+FaceScan. El fondo animado verde/azul se compone con tres capas
+`.facescan-bg`, el logo común se carga desde `src/assets/adanlogo.png` y las
+tarjetas, campos y botones reutilizan las clases globales `.glass-card`,
+`.custom-input`, `.main-btn`, `.link-btn` y `.divider`.
+
+Los estilos base están en `src/global.scss` para mantener consistencia entre
+pantallas. Los SCSS específicos de cada página sólo deberían contener ajustes
+locales, por ejemplo estados de error, botones secundarios o detalles propios
+del reconocimiento facial.
 
 ## Tecnologías y versiones principales
 
@@ -71,13 +111,17 @@ Capacitor 8 requiere Node.js 22 o superior. Se recomienda Node.js 22 LTS.
 ```text
 Facial/
 ├─ src/
+│  ├─ app/login/                   Credenciales y entrada al acceso facial
+│  ├─ app/registro/                Alta de usuarios mediante el backend
 │  ├─ app/inicio/                  Reconocimiento facial y acceso
 │  ├─ app/services/
+│  │  ├─ auth.service.ts           Backend y persistencia de sesión
 │  │  └─ face-recognition.service.ts
-│  │                                  Backend, modelos y caché en memoria
-│  └─ assets/
-│     ├─ images/                   Rostros de referencia
+│  │                                  Modelos y caché facial en memoria
+│  ├─ assets/
+│     ├─ images/                   Rostros locales; los personales se ignoran
 │     └─ models/                   Modelos locales de face-api
+│  └─ global.scss                  Identidad visual compartida FaceScan
 ├─ puente-arduino/
 │  ├─ index.js                     Servidor HTTP y conexión serial
 │  ├─ package.json                 Dependencias exclusivas del puente
@@ -141,12 +185,48 @@ Hay dos instalaciones npm separadas:
 No copies `node_modules` entre computadoras. Los dos `package-lock.json`
 permiten reconstruir las mismas versiones con `npm ci`.
 
+### Clones creados antes del saneamiento biométrico
+
+El historial del repositorio fue reescrito para retirar las imágenes personales.
+Los colaboradores que tengan un clon anterior deben respaldar únicamente sus
+cambios de código y volver a clonar el repositorio. No deben mezclar ni volver a
+publicar ramas basadas en el historial anterior, porque podrían reintroducir los
+archivos eliminados.
+
+### Archivos deliberadamente fuera de Git
+
+La combinación del `.gitignore` raíz y los archivos `.gitignore` de Android
+excluye:
+
+- `node_modules` de la aplicación y del puente Arduino;
+- cachés y salidas de Angular, Ionic, Capacitor, Gradle y Android;
+- `www`, APK, AAB, cobertura, reportes, logs, volcados y archivos de proceso;
+- entornos Python, configuración local del SDK y metadatos de editores;
+- `.env`, llaves, certificados y almacenes de firma contemplados por el proyecto;
+- `src/assets/images/yo.jpeg` y `src/assets/images/Sergio.jpeg`.
+
+Los modelos de `src/assets/models`, el código fuente, los manifiestos y los
+archivos `package-lock.json` sí deben permanecer rastreados.
+
 ## 2. Preparar los rostros de referencia
 
-Las imágenes actuales están en:
+Las imágenes se colocan localmente en:
 
 - `src/assets/images/yo.jpeg`;
 - `src/assets/images/Sergio.jpeg`.
+
+Estos archivos no se descargan al clonar y deben obtenerse por un canal privado
+con autorización de las personas involucradas. Para comprobar que Git los está
+ignorando:
+
+```bash
+git check-ignore -v src/assets/images/yo.jpeg
+git check-ignore -v src/assets/images/Sergio.jpeg
+```
+
+Ambos comandos deben mostrar la regla correspondiente de `.gitignore`. No se
+deben usar `git add -f`, `git commit -a` con archivos previamente forzados ni
+otras opciones que anulen esas reglas.
 
 Cada imagen debe mostrar un rostro frontal, bien iluminado y sin otras personas.
 Si se conservan los mismos nombres, basta con reemplazar los archivos. Para
@@ -183,6 +263,13 @@ Abrir:
 ```text
 http://localhost:4200
 ```
+
+El servidor de desarrollo Ionic/Angular puede iniciar y mostrar la interfaz sin
+levantar un backend local. El login por credenciales y el registro sí requieren
+acceso al backend remoto configurado en `AuthService`
+(`https://app-facial.vercel.app`). El acceso facial y la carga de modelos usan
+recursos locales. El puente Node.js sólo es necesario cuando se quiere ejecutar
+la apertura física de la puerta.
 
 Autoriza el acceso a la cámara y abre las herramientas del navegador con
 `F12`. Los mensajes de diagnóstico incluyen:
@@ -590,6 +677,19 @@ Git.
 
 ## Cambios acumulados en esta versión
 
+- integrada la identidad visual de FaceScan en login, registro e inicio;
+- agregado `src/assets/adanlogo.png` y utilizado como marca en las pantallas de
+  autenticación;
+- unificados el fondo animado, las tarjetas glass, la paleta azul y los estilos
+  responsivos sin reemplazar la lógica de formularios, sesión o cámara;
+- centralizado el acceso al backend y la sesión en `AuthService`;
+- conectado el login con `/login` y el registro con `/register`;
+- agregada persistencia de los datos mínimos de sesión en `localStorage`;
+- incorporada la elección entre acceso por credenciales y reconocimiento facial;
+- agregados el nombre y método de acceso de la sesión a la pantalla de
+  reconocimiento;
+- agregado cierre de sesión con limpieza de cámara, intervalo y canvas;
+- agregados recuadros verde y rojo sobre el video para indicar coincidencias;
 - corregida la carga asíncrona de modelos antes de encender la cámara;
 - sincronizados los IDs de imágenes y video entre HTML y TypeScript;
 - agregados registros de diagnóstico para modelos, descriptores, detecciones y
@@ -617,11 +717,14 @@ Git.
 - separadas las dependencias Node del puente respecto a la app Ionic;
 - agregado `package-lock.json` propio para el puente;
 - ampliado `.gitignore` para dependencias, compilaciones, entornos y llaves;
+- excluidas las imágenes biométricas personales y saneado su historial Git;
 - sincronizado y compilado correctamente el proyecto Android.
 
 ## Seguridad y límites del prototipo
 
 - CORS no es autenticación.
+- La sesión guardada en `localStorage` mejora la continuidad de la interfaz,
+  pero no sustituye un token de servidor ni un almacén seguro de credenciales.
 - El endpoint de apertura no tiene usuarios, tokens ni firma de solicitudes.
 - El puente debe ejecutarse únicamente en una red local confiable.
 - El umbral facial `0.5` debe validarse con pruebas reales.
@@ -629,6 +732,9 @@ Git.
   de producción.
 - No existe detección de vida; una fotografía o pantalla podría engañar al
   modelo.
-- Las imágenes faciales no deben almacenarse en un repositorio público.
+- Las imágenes faciales personales están ignoradas y deben conservarse sólo de
+  forma local o intercambiarse mediante un canal privado autorizado.
+- Reescribir el historial no invalida copias antiguas: los colaboradores deben
+  volver a clonar y evitar publicar ramas creadas antes del saneamiento.
 - Para producción se requiere HTTPS, autenticación, auditoría y protección
   contra repetición de solicitudes.

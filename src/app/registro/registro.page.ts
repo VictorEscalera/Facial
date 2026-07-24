@@ -1,39 +1,34 @@
 import { Component, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
-import { HttpClient, HttpClientModule } from '@angular/common/http';
-
-// CORRECCIÓN: Importaciones INDIVIDUALES desde /standalone para Ionic 8
-import { 
-  IonContent,
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  IonButton,
   IonCard,
   IonCardContent,
-  IonItem,
+  IonContent,
   IonIcon,
   IonInput,
-  IonButton,
-  ToastController // <-- Inyección standalone limpia
+  IonItem,
+  ToastController
 } from '@ionic/angular/standalone';
-
 import { addIcons } from 'ionicons';
-import { 
-  personAddOutline, 
-  personOutline, 
-  mailOutline, 
-  lockClosedOutline, 
-  checkmarkCircleOutline 
+import {
+  checkmarkCircleOutline,
+  lockClosedOutline,
+  mailOutline,
+  personAddOutline,
+  personOutline
 } from 'ionicons/icons';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-registro',
   templateUrl: './registro.page.html',
   styleUrls: ['./registro.page.scss'],
   standalone: true,
-  // CORRECCIÓN: Declaramos individualmente los componentes visuales que usa tu HTML
   imports: [
-    RouterLink, 
-    ReactiveFormsModule, 
-    HttpClientModule,
+    RouterLink,
+    ReactiveFormsModule,
     IonContent,
     IonCard,
     IonCardContent,
@@ -41,67 +36,78 @@ import {
     IonIcon,
     IonInput,
     IonButton
-  ] 
+  ]
 })
 export class RegistroPage {
-  
-  private router = inject(Router);
-  private toastController = inject(ToastController);
-  private http = inject(HttpClient);
+  private readonly router = inject(Router);
+  private readonly toastController = inject(ToastController);
+  private readonly authService = inject(AuthService);
 
-  // URL local para tu prototipo (Cámbiala por la de Vercel al desplegar)
-  private API_URL = 'https://app-facial.vercel.app/register'; 
+  enviando = false;
 
-  registroForm = new FormGroup({
-    nombre: new FormControl('', [Validators.required]),
-    email: new FormControl('', [Validators.required, Validators.email]),
-    password: new FormControl('', [Validators.required, Validators.minLength(6)]),
-    confirmPassword: new FormControl('', [Validators.required])
+  readonly registroForm = new FormGroup({
+    nombre: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.minLength(3)]
+    }),
+    email: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.email]
+    }),
+    password: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.minLength(6)]
+    }),
+    confirmPassword: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required]
+    })
   });
 
   constructor() {
-    addIcons({ 
-      personAddOutline, 
-      personOutline, 
-      mailOutline, 
-      lockClosedOutline, 
-      checkmarkCircleOutline 
+    addIcons({
+      personAddOutline,
+      personOutline,
+      mailOutline,
+      lockClosedOutline,
+      checkmarkCircleOutline
     });
   }
 
-  async registrarUsuario() {
-    const { nombre, email, password, confirmPassword } = this.registroForm.value;
-
-    if (password !== confirmPassword) {
-      this.mostrarMensaje('Las contraseñas no coinciden', 'danger');
+  registrarUsuario(): void {
+    if (this.registroForm.invalid || this.enviando) {
+      this.registroForm.markAllAsTouched();
       return;
     }
-    
-    // Objeto directo en texto plano para el backend prototipo
-    const datosUsuario = {
-      nombre: nombre,
-      email: email,
-      password: password
-    };
 
-    this.http.post(this.API_URL, datosUsuario).subscribe({
-      next: async (respuesta: any) => {
+    const { nombre, email, password, confirmPassword } = this.registroForm.getRawValue();
+
+    if (password !== confirmPassword) {
+      void this.mostrarMensaje('Las contraseñas no coinciden', 'danger');
+      return;
+    }
+
+    this.enviando = true;
+    this.authService.registrar({ nombre, email, password }).subscribe({
+      next: async () => {
+        this.enviando = false;
         await this.mostrarMensaje('Cuenta creada con éxito', 'success');
-        this.registroForm.reset(); 
-        this.router.navigate(['/login']);
+        this.registroForm.reset();
+        await this.router.navigate(['/login']);
       },
-      error: async (err) => {
+      error: async err => {
+        this.enviando = false;
         const mensajeError = err.error?.error || 'Error al registrar usuario';
         await this.mostrarMensaje(mensajeError, 'danger');
       }
     });
   }
 
-  async mostrarMensaje(mensaje: string, color: string) {
+  private async mostrarMensaje(mensaje: string, color: string): Promise<void> {
     const toast = await this.toastController.create({
       message: mensaje,
       duration: 2000,
-      color: color,
+      color,
       position: 'top',
       cssClass: 'custom-toast'
     });
