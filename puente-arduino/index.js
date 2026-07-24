@@ -4,7 +4,7 @@ const { SerialPort, ReadlineParser } = require('serialport');
 
 const app = express();
 const PORT = Number(process.env.PORT || 5000);
-const puertoArduino = process.env.ARDUINO_PORT || 'COM3';
+const puertoArduino = process.env.ARDUINO_PORT || 'COM4';
 const baudios = 9600;
 const tiempoMaximoOperacionMs = 20000;
 
