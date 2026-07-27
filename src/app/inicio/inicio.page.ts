@@ -357,7 +357,7 @@ export class InicioPage implements AfterViewInit, OnDestroy {
     const hostPuente = Capacitor.isNativePlatform()
       ? this.ipPuenteEnDispositivo
       : window.location.hostname || 'localhost';
-    const urlPuente = `http://${hostPuente}:5000/abrir-puerta`;
+    const urlPuente = `https://repave-untying-enrage.ngrok-free.dev/abrir-puerta`;
     console.log('URL del puente Arduino:', urlPuente);
 
     this.ngZone.run(() => {
