@@ -1,0 +1,16 @@
+[33m6f1e009[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m 3 servos funcionales
+[33m7891032[m Merge branch 'prueba-hardware-arduino' into main
+[33mb17885f[m fix: ajusta control de cerradura y puerto Arduino
+[33mae8497c[m[33m ([m[1;31morigin/prueba-hardware-arduino[m[33m)[m ajustes de readme
+[33m9d70513[m diseños visuales de otro repo
+[33m7976916[m archivo mas liviano
+[33m5facc3a[m combinacion de dos repos
+[33m67c4210[m[33m ([m[1;31morigin/copilot/el-modelo-que-usa-la-ia[m[33m)[m chore: keep biometric images local
+[33md864eef[m Change redirect path from 'inicio' to 'login'
+[33mabbdefe[m cambios de readme
+[33mc708921[m feat: optimiza reconocimiento facial e integra control Arduino
+[33m55092b1[m feat: integra reconocimiento facial con control de acceso Arduino
+[33mdd0a419[m feat: conexión de IA frontend con puente local Node.js para Arduino
+[33m0d25624[m Reconocimiento Facial Integrado
+[33m21902e0[m V1.0
+[33me5fe315[m Initial commit

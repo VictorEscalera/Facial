@@ -7,10 +7,9 @@
 }
 
 <ion-content class="ion-text-center">
-  <!-- Deben existir mientras se preparan los descriptores, pero nunca son visibles. -->
-  <div class="face-reference-images" aria-hidden="true">
+  <!-- Contenedor oculto para las imágenes de referencia utilizadas por FaceAPI -->
+  <div class="face-reference-images" style="display: none;" aria-hidden="true">
     <img id="imagenReferencia" src="assets/images/yo.jpeg" crossorigin="anonymous" />
-    <img id="imagenReferenciaCompanero" src="assets/images/Sergio.jpeg" crossorigin="anonymous" />
   </div>
 
   @if (isLoadingModels()) {

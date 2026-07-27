@@ -176,7 +176,6 @@ export class InicioPage implements AfterViewInit, OnDestroy {
 
     const referencias = [
       { id: 'imagenReferencia', etiqueta: 'Usuario' },
-      { id: 'imagenReferenciaCompanero', etiqueta: 'Sergio' }
     ];
     const descriptores: FaceApi.LabeledFaceDescriptors[] = [];
 
