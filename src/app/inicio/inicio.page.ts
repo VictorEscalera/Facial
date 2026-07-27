@@ -241,6 +241,13 @@ export class InicioPage implements AfterViewInit, OnDestroy {
   }
 
   async escanearConIA() {
+    // 👇 ESTA ES LA MODIFICACIÓN 👇
+    if (this.accesoEnCurso) {
+      console.log('[FaceAPI] Escaneo en pausa: Los servomotores están trabajando...');
+      return; 
+    }
+    // 👆 HASTA AQUÍ 👆
+
     if (this.escaneoEnCurso) {
       console.log('[FaceAPI] Escaneo omitido: el ciclo anterior sigue en curso.');
       return;
