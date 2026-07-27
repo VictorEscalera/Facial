@@ -13,6 +13,7 @@ const origenesPermitidos = new Set([
     'http://localhost:8100',
     'https://localhost',
     'capacitor://localhost',
+    'https://facial-ten.vercel.app',
 ]);
 
 for (const origen of (process.env.ALLOWED_ORIGINS || '').split(',')) {
