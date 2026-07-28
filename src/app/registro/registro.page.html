@@ -30,15 +30,23 @@
             <ion-input formControlName="confirmPassword" type="password" placeholder="Confirmar contraseña"></ion-input>
           </ion-item>
 
-          <ion-button type="submit" expand="block" shape="round" class="main-btn" [disabled]="!registroForm.valid">
+          <!-- type="button" evita que este botón intente enviar el formulario -->
+          <ion-button type="button" expand="block" color="secondary" (click)="tomarFotoRegistro()" class="ion-margin-bottom" style="margin-top: 15px;">
+            <ion-icon name="camera-outline" slot="start"></ion-icon>
+            {{ fotoBase64 ? 'Foto capturada (Retomar)' : 'Tomar Foto Facial' }}
+          </ion-button>
+
+          <ion-button type="submit" expand="block" shape="round" class="main-btn" [disabled]="!registroForm.valid || !fotoBase64">
             Registrarse
           </ion-button>
           
           <div class="divider">o</div>
 
-          <ion-button expand="block" fill="clear" class="link-btn" routerLink="/login" routerDirection="back">
+          <!-- Navegación directa invocando irALogin() -->
+          <ion-button type="button" expand="block" fill="clear" class="link-btn" (click)="irALogin()">
             ¿Ya tienes cuenta? Inicia sesión
           </ion-button>
+
         </ion-card-content>
       </ion-card>
     </form>

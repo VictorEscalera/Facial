@@ -22,12 +22,15 @@ export class InicioPage implements AfterViewInit, OnDestroy {
   public isRecognitionReady = signal<boolean>(false);
   public statusMessage = signal<string>('Cargando redes neuronales...');
   public matchResult = signal<string>('');
+  
+  // Variable dinámica para la foto desde la base de datos
+  public urlFotoReferencia = signal<string>(''); 
+
   private readonly ngZone = inject(NgZone);
   private readonly faceRecognition = inject(FaceRecognitionService);
   private streamCamara: MediaStream | null = null;
   private faceApi: FaceApiModule | null = null;
   
-  // 1. Creamos la variable para guardar el ID del temporizador
   private intervaloEscaneo?: ReturnType<typeof setInterval>;
   private escaneoEnCurso = false;
   private faceMatcher: FaceApi.FaceMatcher | null = null;
@@ -36,23 +39,28 @@ export class InicioPage implements AfterViewInit, OnDestroy {
   private activandoReconocimiento = false;
   private accesoEnCurso = false;
   private accesoSolicitadoParaRostroActual = false;
-  private readonly ipPuenteEnDispositivo = '192.168.120.49';
 
   constructor() {
-    // Evitamos el colapso de la URL inyectando el ícono en memoria
     addIcons({ scanOutline });
   }
 
   async ngAfterViewInit() {
     try {
-      // Cede dos frames para que Ionic pinte el indicador antes de iniciar TensorFlow.
+      // 1. Configuramos dinámicamente la URL de la foto basada en el usuario logueado
+      const emailActivo = localStorage.getItem('emailUsuarioActivo');
+      if (emailActivo) {
+        // Asegurarse de codificar el email para evitar caracteres inválidos en la URL (por ejemplo @)
+        this.urlFotoReferencia.set(`https://app-facial.vercel.app/foto/${encodeURIComponent(emailActivo)}`);
+      } else {
+        throw new Error('No hay usuario activo en sesión.');
+      }
+
       await this.esperarPintadoInicial();
       await this.cargarModelosIA();
       await this.crearDescriptoresReferencia();
       this.referenciasPreparadas = true;
       this.isRecognitionReady.set(true);
       this.isLoadingModels.set(false);
-      // El video se crea con el bloque @else; esperamos a que Angular lo renderice.
       await this.esperarPintadoInicial();
 
       if (this.vistaActiva) {
@@ -103,7 +111,6 @@ export class InicioPage implements AfterViewInit, OnDestroy {
     try {
       await this.encenderCamara();
 
-      // El permiso puede resolverse después de que el usuario abandone la página.
       if (!this.vistaActiva) {
         this.apagarCamara();
         return;
@@ -166,8 +173,8 @@ export class InicioPage implements AfterViewInit, OnDestroy {
 
   private async crearDescriptoresReferencia() {
     const faceapi = this.obtenerFaceApiCargada();
-    const inicioTotal = performance.now();
     const matcherEnMemoria = this.faceRecognition.obtenerFaceMatcher();
+    
     if (matcherEnMemoria) {
       this.faceMatcher = matcherEnMemoria;
       console.log('[FaceAPI] Descriptores reutilizados desde memoria.');
@@ -180,47 +187,61 @@ export class InicioPage implements AfterViewInit, OnDestroy {
     const descriptores: FaceApi.LabeledFaceDescriptors[] = [];
 
     for (const referencia of referencias) {
-      const inicioReferencia = performance.now();
       const imagen = document.getElementById(referencia.id) as HTMLImageElement | null;
       if (!imagen) {
         throw new Error(`No se encontró la imagen #${referencia.id}.`);
       }
+      // Definir una referencia local no-nullabilizada para que TypeScript la reconozca en closures
+      const img = imagen as HTMLImageElement;
 
-      if (!imagen.complete || imagen.naturalWidth === 0) {
-        console.log(`[FaceAPI] Esperando que cargue #${referencia.id}...`);
-        await imagen.decode();
+      // Esperar descarga de la imagen (con timeout y manejo de errores más claro)
+      if (!img.complete || img.naturalWidth === 0) {
+        console.log(`[FaceAPI] Esperando que cargue la foto de perfil desde el servidor... (${img.src})`);
+        await new Promise<void>((resolve, reject) => {
+          const onLoad = () => {
+            cleanup();
+            resolve();
+          };
+          const onError = () => {
+            cleanup();
+            reject(new Error(`No se pudo cargar la imagen de referencia: ${img.src}`));
+          };
+          const timer = window.setTimeout(() => {
+            cleanup();
+            reject(new Error(`Timeout al cargar la imagen de referencia: ${img.src}`));
+          }, 8000);
+
+          function cleanup() {
+            // usar img (no null) en lugar de la variable potencialmente nula
+            img.onload = null;
+            img.onerror = null;
+            clearTimeout(timer);
+          }
+
+          img.onload = onLoad;
+          img.onerror = onError;
+        });
+        await img.decode();
       }
 
       const deteccion = await faceapi
-        .detectSingleFace(imagen)
+        .detectSingleFace(img)
         .withFaceLandmarks()
         .withFaceDescriptor();
 
       if (!deteccion) {
-        throw new Error(`No se detectó un rostro en #${referencia.id} (${imagen.src}).`);
+        throw new Error(`No se detectó un rostro en la foto de perfil (${img.src}).`);
       }
 
       descriptores.push(
         new faceapi.LabeledFaceDescriptors(referencia.etiqueta, [deteccion.descriptor])
       );
-      console.log('[FaceAPI] Descriptores extraídos:', {
-        id: referencia.id,
-        etiqueta: referencia.etiqueta,
-        longitud: deteccion.descriptor.length,
-        tiempoMs: Math.round(performance.now() - inicioReferencia)
-      });
+      console.log('[FaceAPI] Descriptores extraídos con éxito.');
     }
 
     this.faceMatcher = new faceapi.FaceMatcher(descriptores, 0.5);
     this.faceRecognition.guardarFaceMatcher(this.faceMatcher);
-    console.log(
-      '[FaceAPI] Descriptores extraídos y FaceMatcher listo:',
-      {
-        identidades: descriptores.map(descriptor => descriptor.label),
-        tiempoTotalMs: Math.round(performance.now() - inicioTotal)
-      }
-    );
-    this.faceRecognition.registrarDiagnostico('descriptores preparados');
+    console.log('[FaceAPI] Descriptores preparados.');
   }
 
   private obtenerFaceApiCargada(): FaceApiModule {
@@ -230,7 +251,6 @@ export class InicioPage implements AfterViewInit, OnDestroy {
     return this.faceApi;
   }
 
-  // 4. Esta es la función que hace el ciclo cada 5000 milisegundos (5 segundos)
   iniciarBucleDeEscaneo() {
     this.ngZone.runOutsideAngular(() => {
       void this.escanearConIA();
@@ -241,12 +261,10 @@ export class InicioPage implements AfterViewInit, OnDestroy {
   }
 
   async escanearConIA() {
-    // 👇 ESTA ES LA MODIFICACIÓN 👇
     if (this.accesoEnCurso) {
       console.log('[FaceAPI] Escaneo en pausa: Los servomotores están trabajando...');
       return; 
     }
-    // 👆 HASTA AQUÍ 👆
 
     if (this.escaneoEnCurso) {
       console.log('[FaceAPI] Escaneo omitido: el ciclo anterior sigue en curso.');
@@ -254,22 +272,9 @@ export class InicioPage implements AfterViewInit, OnDestroy {
     }
 
     const videoCamara = document.getElementById('videoCamara') as HTMLVideoElement | null;
-    if (!videoCamara) {
-      console.error('[FaceAPI] No se encontró el video #videoCamara.');
-      return;
-    }
-    if (!this.faceMatcher) {
-      console.error('[FaceAPI] No hay descriptores de referencia preparados.');
-      return;
-    }
-    if (videoCamara.paused || videoCamara.ended || videoCamara.readyState < 2) {
-      console.log('[FaceAPI] Video aún no listo:', {
-        paused: videoCamara.paused,
-        ended: videoCamara.ended,
-        readyState: videoCamara.readyState
-      });
-      return;
-    }
+    if (!videoCamara || !this.faceMatcher) return;
+
+    if (videoCamara.paused || videoCamara.ended || videoCamara.readyState < 2) return;
 
     this.escaneoEnCurso = true;
     this.ngZone.run(() => {
@@ -278,25 +283,14 @@ export class InicioPage implements AfterViewInit, OnDestroy {
 
     try {
       const faceapi = this.obtenerFaceApiCargada();
-      const inicioInferencia = performance.now();
-      console.log('[FaceAPI] Escaneando video:', videoCamara.id);
       const deteccionesVivo = await faceapi
         .detectAllFaces(videoCamara)
         .withFaceLandmarks()
         .withFaceDescriptors();
-      console.log('[FaceAPI] Inferencia de cámara completada:', {
-        rostros: deteccionesVivo.length,
-        tiempoMs: Math.round(performance.now() - inicioInferencia)
-      });
 
-      // La inferencia no se puede cancelar; se descarta si la vista ya se cerró.
-      if (!this.vistaActiva) {
-        console.log('[FaceAPI] Resultado descartado: la vista ya no está activa.');
-        return;
-      }
+      if (!this.vistaActiva) return;
 
       if (deteccionesVivo.length === 0) {
-        console.log('[FaceAPI] No se detectó ningún rostro en cámara.');
         this.accesoSolicitadoParaRostroActual = false;
         this.ngZone.run(() => {
           this.statusMessage.set('Esperando sujeto en el marco...');
@@ -305,18 +299,9 @@ export class InicioPage implements AfterViewInit, OnDestroy {
         return;
       }
 
-      console.log('[FaceAPI] Rostro detectado en cámara:', deteccionesVivo.length);
       const coincidencias = deteccionesVivo.map(deteccion =>
         this.faceMatcher!.findBestMatch(deteccion.descriptor)
       );
-      coincidencias.forEach((coincidencia, indice) => {
-        console.log('[FaceAPI] Distancia de coincidencia:', {
-          rostro: indice + 1,
-          etiqueta: coincidencia.label,
-          distancia: coincidencia.distance,
-          umbral: 0.5
-        });
-      });
 
       const coincidencia = coincidencias.reduce((mejor, actual) =>
         actual.distance < mejor.distance ? actual : mejor
@@ -331,8 +316,6 @@ export class InicioPage implements AfterViewInit, OnDestroy {
         if (!this.accesoSolicitadoParaRostroActual && !this.accesoEnCurso) {
           this.accesoSolicitadoParaRostroActual = true;
           void this.abrirPuertaServomotores();
-        } else {
-          console.log('[FaceAPI] Apertura omitida: este rostro ya autorizó el acceso.');
         }
 
       } else {
@@ -347,7 +330,7 @@ export class InicioPage implements AfterViewInit, OnDestroy {
       console.error('[FaceAPI] Error durante el escaneo:', error);
       if (this.vistaActiva) {
         this.ngZone.run(() => {
-          this.statusMessage.set('Error durante el análisis facial. Revisa la consola.');
+          this.statusMessage.set('Error durante el análisis facial.');
         });
       }
     } finally {
@@ -355,50 +338,45 @@ export class InicioPage implements AfterViewInit, OnDestroy {
     }
   }
 
+  // FUNCIÓN MEJORADA CON SOPORTE HÍBRIDO (WEB PROXY / NATIVE)
   async abrirPuertaServomotores() {
     if (this.accesoEnCurso) return;
 
     this.accesoEnCurso = true;
-    console.log('Señal de apertura iniciada, contactando al puente de hardware...');
-
-    const hostPuente = Capacitor.isNativePlatform()
-      ? this.ipPuenteEnDispositivo
-      : window.location.hostname || 'localhost';
-    const urlPuente = `https://repave-untying-enrage.ngrok-free.dev/abrir-puerta`;
-    console.log('URL del puente Arduino:', urlPuente);
-
     this.ngZone.run(() => {
       this.statusMessage.set('Acceso autorizado. Ejecutando apertura física...');
     });
 
     try {
+      const urlPuente = 'https://repave-untying-enrage.ngrok-free.dev/abrir-puerta';
+
       const response = await fetch(urlPuente, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        },
+        body: JSON.stringify({ accion: 'abrir', usuario: 'Verificado' })
       });
-      const data = await response.json().catch(() => ({
-        message: `Respuesta HTTP ${response.status}`
-      }));
 
       if (!response.ok) {
-        throw new Error(data.message || `Error HTTP ${response.status}`);
+        throw new Error(`Error HTTP ${response.status}`);
       }
 
-      console.log('Respuesta final del circuito:', data);
       this.ngZone.run(() => {
-        this.statusMessage.set('Acceso completado. Puerta cerrada y asegurada.');
+        this.statusMessage.set('Acceso completado. Puerta abierta.');
       });
+
     } catch (error) {
-      console.error('Error al contactar con el Arduino:', error);
+      console.error('Error al contactar con el Hardware (Ngrok):', error);
       this.accesoSolicitadoParaRostroActual = false;
-      const mensaje = error instanceof Error ? error.message : 'Error desconocido de hardware';
       this.ngZone.run(() => {
-        this.statusMessage.set(`Fallo de hardware: ${mensaje}`);
+        this.statusMessage.set('Fallo de conexión con el hardware.');
       });
     } finally {
-      this.accesoEnCurso = false;
+      setTimeout(() => {
+        this.accesoEnCurso = false;
+      }, 4000);
     }
   }
 
