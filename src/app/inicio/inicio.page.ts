@@ -26,6 +26,7 @@ export class InicioPage implements AfterViewInit, OnDestroy {
   // Variable dinámica para la foto desde la base de datos
   public urlFotoReferencia = signal<string>(''); 
 
+  private readonly remoteBackendRoot = 'https://app-facial.vercel.app';
   private readonly ngZone = inject(NgZone);
   private readonly faceRecognition = inject(FaceRecognitionService);
   private streamCamara: MediaStream | null = null;
@@ -46,11 +47,10 @@ export class InicioPage implements AfterViewInit, OnDestroy {
 
   async ngAfterViewInit() {
     try {
-      // 1. Configuramos dinámicamente la URL de la foto basada en el usuario logueado
       const emailActivo = localStorage.getItem('emailUsuarioActivo');
       if (emailActivo) {
-        // Asegurarse de codificar el email para evitar caracteres inválidos en la URL (por ejemplo @)
-        this.urlFotoReferencia.set(`https://app-facial.vercel.app/foto/${encodeURIComponent(emailActivo)}`);
+        // Usamos Vercel para descargar la foto de referencia.
+        this.urlFotoReferencia.set(`${this.remoteBackendRoot}/foto/${encodeURIComponent(emailActivo)}`);
       } else {
         throw new Error('No hay usuario activo en sesión.');
       }
@@ -191,10 +191,9 @@ export class InicioPage implements AfterViewInit, OnDestroy {
       if (!imagen) {
         throw new Error(`No se encontró la imagen #${referencia.id}.`);
       }
-      // Definir una referencia local no-nullabilizada para que TypeScript la reconozca en closures
+      
       const img = imagen as HTMLImageElement;
 
-      // Esperar descarga de la imagen (con timeout y manejo de errores más claro)
       if (!img.complete || img.naturalWidth === 0) {
         console.log(`[FaceAPI] Esperando que cargue la foto de perfil desde el servidor... (${img.src})`);
         await new Promise<void>((resolve, reject) => {
@@ -212,7 +211,6 @@ export class InicioPage implements AfterViewInit, OnDestroy {
           }, 8000);
 
           function cleanup() {
-            // usar img (no null) en lugar de la variable potencialmente nula
             img.onload = null;
             img.onerror = null;
             clearTimeout(timer);
@@ -261,19 +259,11 @@ export class InicioPage implements AfterViewInit, OnDestroy {
   }
 
   async escanearConIA() {
-    if (this.accesoEnCurso) {
-      console.log('[FaceAPI] Escaneo en pausa: Los servomotores están trabajando...');
-      return; 
-    }
-
-    if (this.escaneoEnCurso) {
-      console.log('[FaceAPI] Escaneo omitido: el ciclo anterior sigue en curso.');
-      return;
-    }
+    if (this.accesoEnCurso) return; 
+    if (this.escaneoEnCurso) return;
 
     const videoCamara = document.getElementById('videoCamara') as HTMLVideoElement | null;
     if (!videoCamara || !this.faceMatcher) return;
-
     if (videoCamara.paused || videoCamara.ended || videoCamara.readyState < 2) return;
 
     this.escaneoEnCurso = true;
@@ -338,7 +328,7 @@ export class InicioPage implements AfterViewInit, OnDestroy {
     }
   }
 
-  // FUNCIÓN MEJORADA CON SOPORTE HÍBRIDO (WEB PROXY / NATIVE)
+  // FUNCIÓN LIMPIA: Apunta directo al servidor Flask local
   async abrirPuertaServomotores() {
     if (this.accesoEnCurso) return;
 
@@ -348,19 +338,19 @@ export class InicioPage implements AfterViewInit, OnDestroy {
     });
 
     try {
-      const urlPuente = 'https://repave-untying-enrage.ngrok-free.dev/abrir-puerta';
-
-      const response = await fetch(urlPuente, {
+      // Apuntamos directo a tu Flask encendido en tu computadora
+      const localBackendUrl = 'http://localhost:5001/abrir-puerta';
+      
+      const response = await fetch(localBackendUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ accion: 'abrir', usuario: 'Verificado' })
       });
 
       if (!response.ok) {
-        throw new Error(`Error HTTP ${response.status}`);
+        throw new Error(`Error HTTP ${response.status} en el servidor local.`);
       }
 
       this.ngZone.run(() => {
@@ -368,10 +358,10 @@ export class InicioPage implements AfterViewInit, OnDestroy {
       });
 
     } catch (error) {
-      console.error('Error al contactar con el Hardware (Ngrok):', error);
+      console.error('Error al contactar con el hardware local:', error);
       this.accesoSolicitadoParaRostroActual = false;
       this.ngZone.run(() => {
-        this.statusMessage.set('Fallo de conexión con el hardware.');
+        this.statusMessage.set('Fallo de conexión con el Arduino local.');
       });
     } finally {
       setTimeout(() => {

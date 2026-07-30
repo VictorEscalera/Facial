@@ -42,9 +42,8 @@ export class LoginPage {
   private http = inject(HttpClient); 
   private toastController = inject(ToastController);
 
-  // Ojo: Si estás probando la nueva API de Flask en tu computadora, 
-  // recuerda cambiar esto a 'http://localhost:5000/login' (o tu IP local) 
-  // hasta que lo subas a Vercel.
+  // Usamos el backend desplegado en Vercel por defecto.
+  // Cambia a 'http://localhost:5001/login' solo si estás ejecutando una copia local de Flask.
   private API_URL = 'https://app-facial.vercel.app/login';
 
   loginForm = new FormGroup({

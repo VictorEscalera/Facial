@@ -52,16 +52,8 @@ export class RegistroPage {
   private toastController = inject(ToastController);
   private http = inject(HttpClient);
 
-  private API_URL = 'https://app-facial.vercel.app/register'; 
-
-  fotoBase64: string | undefined = undefined;
-
-  registroForm = new FormGroup({
-    nombre: new FormControl('', [Validators.required]),
-    email: new FormControl('', [Validators.required, Validators.email]),
-    password: new FormControl('', [Validators.required, Validators.minLength(6)]),
-    confirmPassword: new FormControl('', [Validators.required])
-  });
+  private readonly backendHost = 'https://app-facial.vercel.app';
+  private API_URL = `${this.backendHost}/register`;
 
   constructor() {
     addIcons({ 
@@ -73,6 +65,16 @@ export class RegistroPage {
       cameraOutline
     });
   }
+
+  fotoBase64: string | undefined = undefined;
+
+  registroForm = new FormGroup({
+    nombre: new FormControl('', [Validators.required]),
+    email: new FormControl('', [Validators.required, Validators.email]),
+    password: new FormControl('', [Validators.required, Validators.minLength(6)]),
+    confirmPassword: new FormControl('', [Validators.required])
+  });
+
 
   async tomarFotoRegistro() {
     // Intentar usar la API de Camera de Capacitor, pero fallar con gracia y ofrecer un input file como fallback.
