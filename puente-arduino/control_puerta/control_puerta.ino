@@ -9,14 +9,18 @@ const uint8_t pinCerradura = 9;
 const uint8_t pinPuerta1 = 10;
 const uint8_t pinPuerta2 = 11;
 
-// Ajusta estos ángulos después de probar el mecanismo sin carga.
+// --- ZONA LÓGICA DE TU IA ---
+// La cerradura se mantiene intacta:
 const int cerraduraTrabada = 0;
 const int cerraduraDestrabada = 90;
-const int puertaCerrada = 0;
-const int puertaAbierta = 180;
 
-// Actívalo si el segundo servo está montado como espejo.
+// Punto de partida en el centro físico (90°) para ambas puertas:
+const int puertaCerrada = 90; 
+const int puertaAbierta = 180; // Ambos servos girarán hacia 180° para abrir
+
+// Al estar en false, AMBOS servos giran exactamente hacia el mismo lado:
 const bool puerta2Invertida = false;
+// ---------------------------------
 
 const unsigned long pausaPestilloMs = 500;
 const unsigned long tiempoPuertaAbiertaMs = 5000;
@@ -45,15 +49,23 @@ void moverPuertas(int posicion);
 void setup() {
   Serial.begin(9600);
 
-  // Guardar las posiciones antes de generar pulsos reduce movimientos bruscos.
-  servoCerradura.write(cerraduraTrabada);
-  moverPuertas(puertaCerrada);
-
+  // Secuencia de arranque suave para proteger tus pilas (Anti-picos)
+  
+  // 1. Despertamos la cerradura primero
+  servoCerradura.write(cerraduraTrabada); 
   servoCerradura.attach(pinCerradura);
-  servoPuerta1.attach(pinPuerta1);
-  servoPuerta2.attach(pinPuerta2);
+  delay(300); 
 
-  delay(500);
+  // 2. Despertamos la Puerta 1
+  servoPuerta1.write(puertaCerrada); // Esto enviará el 90
+  servoPuerta1.attach(pinPuerta1);
+  delay(300); 
+
+  // 3. Despertamos la Puerta 2
+  servoPuerta2.write(puertaCerrada); // Esto enviará el 90
+  servoPuerta2.attach(pinPuerta2);
+  delay(300);
+
   Serial.println("LISTO");
   Serial.println("Escribe A y presiona Enviar para abrir la puerta.");
 }

@@ -1,0 +1,54 @@
+
+
+/* Estilos para el modal de la cámara en PC */
+.web-camera-modal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(5px);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.video-wrapper {
+  width: 90%;
+  max-width: 400px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 3px solid var(--ion-color-secondary);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  
+  video {
+    width: 100%;
+    height: auto;
+    display: block;
+    transform: scaleX(-1); /* Hace efecto espejo para que se sienta natural */
+  }
+}
+
+.camera-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 15px;
+}
+
+/* Pequeña previsualización de la foto una vez tomada */
+.foto-preview {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 15px;
+
+  img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 3px solid var(--ion-color-secondary);
+  }
+}

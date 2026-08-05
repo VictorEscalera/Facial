@@ -6,6 +6,21 @@
       <p>Únete al sistema de AppFacial</p>
     </div>
 
+    <!-- MODAL DE CÁMARA WEB (Solo visible en PC cuando se activa) -->
+    <div *ngIf="camaraActiva" class="web-camera-modal fade-in">
+      <div class="video-wrapper">
+        <video #videoElement autoplay playsinline></video>
+      </div>
+      <div class="camera-actions">
+        <ion-button color="danger" shape="round" (click)="cerrarCamara()">
+          <ion-icon name="close-outline" slot="start"></ion-icon> Cancelar
+        </ion-button>
+        <ion-button color="success" shape="round" (click)="capturarDeVideo()">
+          <ion-icon name="camera-outline" slot="start"></ion-icon> Capturar
+        </ion-button>
+      </div>
+    </div>
+
     <form [formGroup]="registroForm" (ngSubmit)="registrarUsuario()">
       <ion-card class="glass-card">
         <ion-card-content>
@@ -36,13 +51,17 @@
             {{ fotoBase64 ? 'Foto capturada (Retomar)' : 'Tomar Foto Facial' }}
           </ion-button>
 
+          <!-- Previsualización miniatura (opcional, para que el usuario vea su foto) -->
+          <div *ngIf="fotoBase64" class="foto-preview">
+            <img [src]="fotoBase64" alt="Foto capturada" />
+          </div>
+
           <ion-button type="submit" expand="block" shape="round" class="main-btn" [disabled]="!registroForm.valid || !fotoBase64">
             Registrarse
           </ion-button>
           
           <div class="divider">o</div>
 
-          <!-- Navegación directa invocando irALogin() -->
           <ion-button type="button" expand="block" fill="clear" class="link-btn" (click)="irALogin()">
             ¿Ya tienes cuenta? Inicia sesión
           </ion-button>

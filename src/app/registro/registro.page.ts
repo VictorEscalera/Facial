@@ -1,4 +1,5 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ViewChild, ElementRef } from '@angular/core';
+import { CommonModule } from '@angular/common'; // <-- IMPORTANTE PARA EL *ngIf
 import { Router, RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
@@ -14,8 +15,7 @@ import {
   IonInput,
   IonButton,
   ToastController,
-  NavController
-} from '@ionic/angular/standalone';
+  NavController, IonNote, IonText } from '@ionic/angular/standalone';
 
 import { addIcons } from 'ionicons';
 import { 
@@ -24,7 +24,8 @@ import {
   mailOutline, 
   lockClosedOutline, 
   checkmarkCircleOutline,
-  cameraOutline 
+  cameraOutline,
+  closeOutline // <-- Nuevo icono agregado
 } from 'ionicons/icons';
 
 @Component({
@@ -32,7 +33,8 @@ import {
   templateUrl: './registro.page.html',
   styleUrls: ['./registro.page.scss'],
   standalone: true,
-  imports: [
+  imports: [IonText, IonNote, 
+    CommonModule, // <-- Agregado para habilitar directivas de Angular
     RouterLink, 
     ReactiveFormsModule, 
     HttpClientModule,
@@ -48,12 +50,17 @@ import {
 export class RegistroPage {
   
   private router = inject(Router);
-  private navCtrl = inject(NavController); // Inyectamos NavController de Ionic
+  private navCtrl = inject(NavController); 
   private toastController = inject(ToastController);
   private http = inject(HttpClient);
 
   private readonly backendHost = 'https://app-facial.vercel.app';
   private API_URL = `${this.backendHost}/register`;
+
+  // Variables para la cámara WebRTC
+  camaraActiva = false;
+  mediaStream: MediaStream | null = null;
+  @ViewChild('videoElement') videoElement!: ElementRef<HTMLVideoElement>;
 
   constructor() {
     addIcons({ 
@@ -62,7 +69,8 @@ export class RegistroPage {
       mailOutline, 
       lockClosedOutline, 
       checkmarkCircleOutline,
-      cameraOutline
+      cameraOutline,
+      closeOutline
     });
   }
 
@@ -75,18 +83,17 @@ export class RegistroPage {
     confirmPassword: new FormControl('', [Validators.required])
   });
 
-
   async tomarFotoRegistro() {
-    // Intentar usar la API de Camera de Capacitor, pero fallar con gracia y ofrecer un input file como fallback.
     try {
-      // Evitar usar Camera.getPhoto con source CameraSource.Camera en plataforma web porque puede instanciar pwa-camera-modal
       const platform = (Capacitor && typeof Capacitor.getPlatform === 'function') ? Capacitor.getPlatform() : 'web';
+      
       if (platform === 'web') {
-        console.warn('Plataforma web detectada: usando selector de archivos en lugar de Camera.getPhoto para evitar errores de pwa-camera-modal.');
-        await this.abrirSelectorArchivos();
+        // En computadora (web), activamos la cámara del navegador
+        await this.iniciarCamaraWeb();
         return;
       }
 
+      // En móvil (Android/iOS), usamos el plugin nativo de Capacitor
       if (Camera && Camera.getPhoto) {
         try {
           const image: any = await Camera.getPhoto({
@@ -101,18 +108,13 @@ export class RegistroPage {
             this.fotoBase64 = `data:image/jpeg;base64,${base64}`;
             await this.mostrarMensaje('Foto facial capturada correctamente', 'success');
             return;
-          } else {
-            console.warn('Camera.getPhoto devolvió respuesta sin base64, usando selector de archivos como fallback.');
-          }
+          } 
         } catch (camErr) {
-          // Si ocurre cualquier error al abrir la cámara (por ejemplo en web), se usa fallback.
-          console.warn('Error usando Camera.getPhoto, fallback a selector de archivos:', camErr);
+          console.warn('Error usando Camera nativa:', camErr);
         }
-      } else {
-        console.warn('Camera API no disponible, usando selector de archivos como fallback.');
-      }
+      } 
 
-      // Fallback: abrir un input[type=file] dinámico para que el usuario seleccione o tome una foto desde el navegador.
+      // Fallback extremo por si todo falla
       await this.abrirSelectorArchivos();
     } catch (error) {
       console.error('Error en tomarFotoRegistro:', error);
@@ -120,7 +122,65 @@ export class RegistroPage {
     }
   }
 
-  // Helper: abre un input file dinámicamente y convierte la imagen seleccionada a data URL (base64)
+  // --- LÓGICA DE CÁMARA WEB PARA PC ---
+
+  async iniciarCamaraWeb() {
+    try {
+      // Solicitamos acceso a la cámara frontal (user)
+      this.mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'user' } 
+      });
+      this.camaraActiva = true;
+      
+      // Esperamos un tick para que Angular renderice el <video>
+      setTimeout(() => {
+        if (this.videoElement && this.videoElement.nativeElement) {
+          this.videoElement.nativeElement.srcObject = this.mediaStream;
+        }
+      }, 100);
+    } catch (err) {
+      console.warn('Cámara web no disponible, abriendo selector de archivos', err);
+      // Si no tiene cámara o no da permisos, cae al explorador de archivos
+      await this.abrirSelectorArchivos(); 
+    }
+  }
+
+  capturarDeVideo() {
+    if (!this.videoElement) return;
+    const video = this.videoElement.nativeElement;
+    
+    // Creamos un canvas para tomar la foto del frame actual del video
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    
+    if (ctx) {
+      // --- SOLUCIÓN AL EFECTO ESPEJO ---
+      // Movemos el punto de origen al lado derecho del canvas
+      ctx.translate(canvas.width, 0);
+      // Invertimos la escala horizontalmente
+      ctx.scale(-1, 1);
+      // ---------------------------------
+
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      this.fotoBase64 = canvas.toDataURL('image/jpeg'); // Extrae a base64
+      this.mostrarMensaje('Foto facial capturada correctamente', 'success');
+    }
+    
+    this.cerrarCamara();
+  }
+
+  cerrarCamara() {
+    if (this.mediaStream) {
+      this.mediaStream.getTracks().forEach(track => track.stop());
+      this.mediaStream = null;
+    }
+    this.camaraActiva = false;
+  }
+
+  // --- LÓGICA DE ARCHIVOS COMO FALLBACK ---
+
   abrirSelectorArchivos(): Promise<void> {
     return new Promise((resolve) => {
       try {
@@ -139,39 +199,27 @@ export class RegistroPage {
 
           const reader = new FileReader();
           reader.onload = async () => {
-            const result = reader.result as string | ArrayBuffer | null;
-            if (typeof result === 'string') {
-              // result ya es data URL: data:image/..;base64,...
-              this.fotoBase64 = result;
-              await this.mostrarMensaje('Imagen seleccionada correctamente', 'success');
-            } else {
-              await this.mostrarMensaje('No se pudo leer la imagen seleccionada', 'danger');
-            }
+            const result = reader.result as string;
+            this.fotoBase64 = result;
+            await this.mostrarMensaje('Imagen seleccionada correctamente', 'success');
             resolve();
           };
-          reader.onerror = async (e) => {
-            console.error('FileReader error:', e);
+          reader.onerror = async () => {
             await this.mostrarMensaje('Error al leer la imagen', 'danger');
             resolve();
           };
           reader.readAsDataURL(file);
         };
-
-        // Añadir al DOM temporalmente para poder disparar el diálogo en algunos navegadores (opcional)
         document.body.appendChild(input);
         input.click();
-
-        // Limpiar el input cuando se cierre el diálogo (no siempre es detectable), pero removerlo tras un tiempo prudente.
-        setTimeout(() => {
-          if (input.parentNode) input.parentNode.removeChild(input);
-        }, 5000);
+        setTimeout(() => { if (input.parentNode) input.parentNode.removeChild(input); }, 5000);
       } catch (e) {
-        console.error('Error al abrir selector de archivos:', e);
-        this.mostrarMensaje('No se pudo abrir el selector de archivos', 'danger');
         resolve();
       }
     });
   }
+
+  // --- REGISTRO Y UTILIDADES ---
 
   async registrarUsuario() {
     const nombre = this.registroForm.get('nombre')?.value?.toString().trim() || '';
@@ -193,7 +241,6 @@ export class RegistroPage {
       nombre,
       email,
       password,
-      // Enviamos tanto la data URL como la base64 cruda por compatibilidad
       foto: this.fotoBase64,
       fotoBase64: this.fotoBase64.startsWith('data:') ? this.fotoBase64.split(',')[1] : this.fotoBase64
     };
@@ -203,19 +250,15 @@ export class RegistroPage {
         await this.mostrarMensaje('Cuenta creada con éxito', 'success');
         this.registroForm.reset();
         this.fotoBase64 = undefined; 
-        
-        // Usamos navCtrl.navigateRoot para forzar el cambio de pantalla al login
         this.navCtrl.navigateRoot('/login');
       },
       error: async (err) => {
-        console.error('Error registrarUsuario:', err);
         const mensajeError = err.error?.error || 'Error al registrar usuario';
         await this.mostrarMensaje(mensajeError, 'danger');
       }
     });
   }
 
-  // Método explícito para redirigir al login
   irALogin() {
     this.navCtrl.navigateBack('/login');
   }
