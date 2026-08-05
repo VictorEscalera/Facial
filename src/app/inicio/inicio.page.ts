@@ -3,9 +3,10 @@ import { CommonModule } from '@angular/common';
 import { IonicModule } from '@ionic/angular';
 import type * as FaceApi from '@vladmandic/face-api';
 import { addIcons } from 'ionicons';
-import { scanOutline } from 'ionicons/icons';
+import { scanOutline, logOutOutline } from 'ionicons/icons';
 import { Capacitor } from '@capacitor/core';
 import { FaceRecognitionService } from '../services/face-recognition.service';
+import { NavController } from '@ionic/angular';
 
 type FaceApiModule = typeof import('@vladmandic/face-api');
 
@@ -23,7 +24,6 @@ export class InicioPage implements AfterViewInit, OnDestroy {
   public statusMessage = signal<string>('Cargando redes neuronales...');
   public matchResult = signal<string>('');
   
-  // Variable dinámica para la foto desde la base de datos
   public urlFotoReferencia = signal<string>(''); 
 
   private readonly remoteBackendRoot = 'https://app-facial.vercel.app';
@@ -31,6 +31,7 @@ export class InicioPage implements AfterViewInit, OnDestroy {
   private readonly faceRecognition = inject(FaceRecognitionService);
   private streamCamara: MediaStream | null = null;
   private faceApi: FaceApiModule | null = null;
+  private readonly navCtrl = inject(NavController);
   
   private intervaloEscaneo?: ReturnType<typeof setInterval>;
   private escaneoEnCurso = false;
@@ -42,14 +43,13 @@ export class InicioPage implements AfterViewInit, OnDestroy {
   private accesoSolicitadoParaRostroActual = false;
 
   constructor() {
-    addIcons({ scanOutline });
+    addIcons({ scanOutline, logOutOutline });
   }
 
   async ngAfterViewInit() {
     try {
       const emailActivo = localStorage.getItem('emailUsuarioActivo');
       if (emailActivo) {
-        // Usamos Vercel para descargar la foto de referencia.
         this.urlFotoReferencia.set(`${this.remoteBackendRoot}/foto/${encodeURIComponent(emailActivo)}`);
       } else {
         throw new Error('No hay usuario activo en sesión.');
@@ -146,11 +146,6 @@ export class InicioPage implements AfterViewInit, OnDestroy {
       });
       videoElement.srcObject = this.streamCamara;
       await videoElement.play();
-      console.log('[FaceAPI] Cámara lista:', {
-        id: videoElement.id,
-        width: videoElement.videoWidth,
-        height: videoElement.videoHeight
-      });
     } catch (error) {
       console.error('[FaceAPI] Error con la cámara:', error);
       this.statusMessage.set('No se pudo acceder a la cámara.');
@@ -162,8 +157,6 @@ export class InicioPage implements AfterViewInit, OnDestroy {
     try {
       await this.faceRecognition.cargarModelos();
       this.faceApi = await this.faceRecognition.obtenerFaceApi();
-      console.log('[FaceAPI] Modelos disponibles en InicioPage.');
-      
     } catch (error) {
       console.error('[FaceAPI] Error cargando IA:', error);
       this.statusMessage.set('Error al cargar los modelos de IA.');
@@ -173,13 +166,10 @@ export class InicioPage implements AfterViewInit, OnDestroy {
 
   private async crearDescriptoresReferencia() {
     const faceapi = this.obtenerFaceApiCargada();
-    const matcherEnMemoria = this.faceRecognition.obtenerFaceMatcher();
     
-    if (matcherEnMemoria) {
-      this.faceMatcher = matcherEnMemoria;
-      console.log('[FaceAPI] Descriptores reutilizados desde memoria.');
-      return;
-    }
+    // 🔥 ELIMINAMOS LA LECTURA DE LA CACHÉ AQUÍ
+    // Ya no usamos this.faceRecognition.obtenerFaceMatcher()
+    // Obligamos a la app a leer siempre la foto nueva del DOM (que corresponde al nuevo email)
 
     const referencias = [
       { id: 'imagenReferencia', etiqueta: 'Usuario' },
@@ -195,7 +185,6 @@ export class InicioPage implements AfterViewInit, OnDestroy {
       const img = imagen as HTMLImageElement;
 
       if (!img.complete || img.naturalWidth === 0) {
-        console.log(`[FaceAPI] Esperando que cargue la foto de perfil desde el servidor... (${img.src})`);
         await new Promise<void>((resolve, reject) => {
           const onLoad = () => {
             cleanup();
@@ -234,12 +223,16 @@ export class InicioPage implements AfterViewInit, OnDestroy {
       descriptores.push(
         new faceapi.LabeledFaceDescriptors(referencia.etiqueta, [deteccion.descriptor])
       );
-      console.log('[FaceAPI] Descriptores extraídos con éxito.');
     }
 
     this.faceMatcher = new faceapi.FaceMatcher(descriptores, 0.5);
-    this.faceRecognition.guardarFaceMatcher(this.faceMatcher);
-    console.log('[FaceAPI] Descriptores preparados.');
+    
+    // Sobreescribimos cualquier caché viejo en el servicio
+    try {
+      this.faceRecognition.guardarFaceMatcher(this.faceMatcher);
+    } catch (e) {
+      console.warn("No se pudo sobreescribir el FaceMatcher en el servicio.");
+    }
   }
 
   private obtenerFaceApiCargada(): FaceApiModule {
@@ -328,7 +321,6 @@ export class InicioPage implements AfterViewInit, OnDestroy {
     }
   }
 
-  // FUNCIÓN LIMPIA: Apunta directo al servidor Flask local
   async abrirPuertaServomotores() {
     if (this.accesoEnCurso) return;
 
@@ -338,7 +330,6 @@ export class InicioPage implements AfterViewInit, OnDestroy {
     });
 
     try {
-      // Apuntamos directo a tu Flask encendido en tu computadora
       const localBackendUrl = 'http://localhost:5001/abrir-puerta';
       
       const response = await fetch(localBackendUrl, {
@@ -380,5 +371,24 @@ export class InicioPage implements AfterViewInit, OnDestroy {
     if (videoElement) {
       videoElement.srcObject = null;
     }
+  }
+
+  async cerrarSesion() {
+    this.vistaActiva = false;
+    this.detenerReconocimiento();
+    
+    localStorage.clear();
+    
+    // 🔥 LIMPIAMOS LAS VARIABLES DE MEMORIA DE LA IA
+    this.faceMatcher = null; 
+    try {
+      // Intentamos vaciar también la memoria del servicio global si es posible
+      (this.faceRecognition as any).guardarFaceMatcher(null);
+    } catch (e) {}
+
+    this.matchResult.set('');
+    this.statusMessage.set('Sesión finalizada.');
+
+    await this.navCtrl.navigateRoot('/login');
   }
 }

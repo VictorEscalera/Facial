@@ -46,7 +46,7 @@
           </ion-item>
 
           <!-- type="button" evita que este botón intente enviar el formulario -->
-          <ion-button type="button" expand="block" color="secondary" (click)="tomarFotoRegistro()" class="ion-margin-bottom" style="margin-top: 15px;">
+          <ion-button type="button" expand="block" (click)="tomarFotoRegistro()" class="ion-margin-bottom" [class.foto-tomada]="fotoBase64">
             <ion-icon name="camera-outline" slot="start"></ion-icon>
             {{ fotoBase64 ? 'Foto capturada (Retomar)' : 'Tomar Foto Facial' }}
           </ion-button>

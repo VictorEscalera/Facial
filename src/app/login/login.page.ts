@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
+import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 
 import { 
@@ -42,13 +42,12 @@ export class LoginPage {
   private http = inject(HttpClient); 
   private toastController = inject(ToastController);
 
-  // Usamos el backend desplegado en Vercel por defecto.
-  // Cambia a 'http://localhost:5001/login' solo si estás ejecutando una copia local de Flask.
   private API_URL = 'https://app-facial.vercel.app/login';
 
+  // Agregamos Validators.required para que el botón se desactive si están vacíos
   loginForm = new FormGroup({
-    email: new FormControl(''),
-    password: new FormControl('')
+    email: new FormControl('', [Validators.required, Validators.email]),
+    password: new FormControl('', Validators.required)
   });
 
   constructor() {
@@ -56,28 +55,25 @@ export class LoginPage {
   }
 
   iniciarSesion() {
+    if (this.loginForm.invalid) {
+      return; // Bloqueo de seguridad adicional por si burlan el HTML
+    }
+
     const correoIngresado = this.loginForm.value.email;
     const passwordIngresado = this.loginForm.value.password;
     
-    if (!correoIngresado) {
-      // Si entras sin correo (modo Admin)
-      localStorage.setItem('emailUsuarioActivo', 'admin');
-      this.navCtrl.navigateRoot('/inicio', { queryParams: { usuario: 'Administrador' } });
-      return;
-    }
-
     const credenciales = { email: correoIngresado, password: passwordIngresado };
 
     this.http.post(this.API_URL, credenciales).subscribe({
       next: async (respuesta: any) => {
         await this.mostrarMensaje(respuesta.mensaje, 'success');
         
-        // 🔑 LÍNEA CLAVE: Guardamos el correo en la memoria local
+        // Guardamos el correo en localStorage
         const emailAUsar = respuesta.usuario || correoIngresado;
         localStorage.setItem('emailUsuarioActivo', emailAUsar);
         
-        // Redirigimos usando NavController para asegurar la recarga limpia
-        this.navCtrl.navigateRoot('/inicio', { queryParams: { usuario: emailAUsar } });
+        // Redirigimos de forma limpia, SIN queryParams
+        this.navCtrl.navigateRoot('/inicio');
       },
       error: async (err) => {
         const mensajeError = err.error?.error || 'Error al conectar con el servidor';

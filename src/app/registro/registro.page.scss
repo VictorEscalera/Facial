@@ -1,4 +1,11 @@
+h1{
+  font-size: 1.5rem;
+}
 
+p{
+  font-size: 1rem;
+  color: white;
+}
 
 /* Estilos para el modal de la cámara en PC */
 .web-camera-modal {
@@ -42,13 +49,55 @@
 .foto-preview {
   display: flex;
   justify-content: center;
-  margin-bottom: 15px;
+  margin-bottom: 5px; /* Reducido para ahorrar espacio */
+  
+  /* Animación suave para que no salte feo al aparecer */
+  animation: fadeInDown 0.3s ease-out; 
 
   img {
-    width: 120px;
-    height: 120px;
+    width: 65px; /* Reducido a casi la mitad */
+    height: 65px;
     object-fit: cover;
     border-radius: 50%;
-    border: 3px solid var(--ion-color-secondary);
+    border: 2px solid #00b35c; /* Borde verde para que combine con tu botón */
   }
+}
+
+/* =========================================
+   BOTÓN DE CÁMARA SUAVE (Registro)
+   ========================================= */
+.ion-margin-bottom {
+  margin-top: 15px;
+  margin-bottom: 15px;
+  height: 45px;
+  --border-radius: 12px;
+  /* Azul pastel muy suave para estado normal */
+  --background: rgba(0, 153, 255, 0.1) !important; 
+  --color: #09f !important; /* Texto y logo azul (tu color global) */
+  --box-shadow: none !important; /* Sin sombra para un look más limpio/suave */
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: none; /* Letra normal, no mayúsculas, para verse más amigable */
+  transition: all 0.3s ease;
+}
+
+.ion-margin-bottom ion-icon {
+  color: #09f !important;
+  font-size: 20px;
+}
+
+/* Estado: Cuando la foto ya fue capturada (Verde Suave) */
+.ion-margin-bottom.foto-tomada {
+  --background: rgba(0, 230, 118, 0.15) !important; 
+  --color: #00b35c !important; 
+}
+
+.ion-margin-bottom.foto-tomada ion-icon {
+  color: #00b35c !important;
+}
+
+/* Efecto al presionar (click) */
+.ion-margin-bottom:active {
+  transform: scale(0.96);
+  opacity: 0.8;
 }

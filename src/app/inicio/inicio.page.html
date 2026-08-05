@@ -2,6 +2,15 @@
   <ion-header>
     <ion-toolbar color="dark">
       <ion-title>AppFacial - IA Access</ion-title>
+      
+      <!-- Botón de Cerrar Sesión agregado aquí -->
+      <ion-buttons slot="end">
+        <ion-button (click)="cerrarSesion()" color="danger">
+          <ion-icon slot="start" name="log-out-outline"></ion-icon>
+          Salir
+        </ion-button>
+      </ion-buttons>
+
     </ion-toolbar>
   </ion-header>
 }
