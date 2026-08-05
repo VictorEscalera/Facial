@@ -2,14 +2,23 @@
   <ion-header>
     <ion-toolbar color="dark">
       <ion-title>AppFacial - IA Access</ion-title>
+      
+      <!-- Botón de Cerrar Sesión agregado aquí -->
+      <ion-buttons slot="end">
+        <ion-button (click)="cerrarSesion()" color="danger">
+          <ion-icon slot="start" name="log-out-outline"></ion-icon>
+          Salir
+        </ion-button>
+      </ion-buttons>
+
     </ion-toolbar>
   </ion-header>
 }
 
 <ion-content class="ion-text-center">
-  <!-- Contenedor oculto para las imágenes de referencia utilizadas por FaceAPI -->
+  <!-- Contenedor oculto para las imágenes de referencia obtenidas del Backend -->
   <div class="face-reference-images" style="display: none;" aria-hidden="true">
-    <img id="imagenReferencia" src="assets/images/yo.jpeg" crossorigin="anonymous" />
+    <img id="imagenReferencia" [src]="urlFotoReferencia()" crossorigin="anonymous" />
   </div>
 
   @if (isLoadingModels()) {
@@ -19,7 +28,7 @@
       aria-live="polite"
       aria-busy="true">
       <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
-      <p>Cargando redes neuronales y preparando identidades...</p>
+      <p>Cargando redes neuronales y perfil biométrico...</p>
     </section>
   } @else if (isRecognitionReady()) {
     <div class="recognition-interface ion-padding">

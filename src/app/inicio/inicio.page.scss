@@ -1,28 +1,65 @@
 // ==========================================
-// FONDO PRINCIPAL (ESTILO CYBERPUNK / IA)
+// FONDO PRINCIPAL (Fondo Animado del Login)
 // ==========================================
 ion-content {
-  --background: linear-gradient(135deg, #0a0a1a 0%, #120e2b 50%, #050212 100%);
-  color: #ffffff;
+  --background: transparent;
+
+  &::before,
+  &::after {
+    content: "";
+    animation: slide 4s ease-in-out infinite alternate;
+    background-image: linear-gradient(-60deg, #6c3 50%, #09f 50%);
+    bottom: 0; left: -50%; opacity: .5; position: fixed; right: -50%; top: 0; z-index: -1;
+    pointer-events: none;
+  }
+  &::after { 
+    animation-direction: alternate-reverse; 
+    animation-duration: 5s; 
+  }
+}
+
+@keyframes slide { 
+  0% { transform: translateX(-25%); } 
+  100% { transform: translateX(25%); } 
 }
 
 // ==========================================
-// TARJETA SUPERIOR (ESTADO DEL SISTEMA)
+// HEADER Y TOOLBAR
+// ==========================================
+ion-toolbar {
+  --background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+
+  ion-title {
+    font-weight: 800;
+    font-size: 1.5rem;
+    letter-spacing: 1px;
+    color: #ffffff;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+}
+
+// ==========================================
+// TARJETA SUPERIOR (ESTADO DEL SISTEMA - Estilo Cristal)
 // ==========================================
 ion-card {
-  background: rgba(255, 255, 255, 0.03) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 16px !important;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5) !important;
-  margin: 16px;
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(15px) !important;
+  -webkit-backdrop-filter: blur(15px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2) !important;
+  margin: 16px auto;
+  max-width: 380px;
 
   ion-card-content {
+    padding: 15px !important;
+    
     p {
-      color: #c9c7ff !important;
+      color: #333333 !important; /* Texto oscuro para que contraste en la tarjeta blanca */
       font-size: 1.1rem;
-      font-weight: 500;
+      font-weight: 700;
       letter-spacing: 0.5px;
       margin: 0;
     }
@@ -36,54 +73,45 @@ ion-card {
   padding: 10px;
 
   h5 {
-    font-size: 1rem;
-    font-weight: 700;
-    letter-spacing: 2px;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #ffffff;
+    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
     margin-bottom: 15px;
-    text-shadow: 0 0 10px rgba(98, 0, 238, 0.6);
+    text-transform: uppercase;
   }
 
-  // Estilo para el video de la cámara con efecto de escáner
+  // Estilo para el video de la cámara adaptado al tema claro/azul
   video {
-    box-shadow: 0 0 20px rgba(98, 0, 238, 0.4), 
-                inset 0 0 15px rgba(98, 0, 238, 0.4) !important;
-    border: 2px solid rgba(123, 44, 191, 0.8) !important;
+    border-radius: 20px !important;
+    background-color: #000;
+    box-shadow: 0 10px 30px rgba(0, 153, 255, 0.3) !important;
+    border: 4px solid rgba(255, 255, 255, 0.9) !important;
     transition: all 0.3s ease-in-out;
-
-    // Efecto de pulso suave cuando está encendida
+    // Efecto de pulso en tonos azules
     animation: pulse-border 2s infinite alternate;
   }
 }
 
-// Animación del borde de la cámara
+// Animación del borde de la cámara (Tema Azul/Celeste)
 @keyframes pulse-border {
-  0% { box-shadow: 0 0 15px rgba(98, 0, 238, 0.3); }
-  100% { box-shadow: 0 0 30px rgba(123, 44, 191, 0.7); }
+  0% { box-shadow: 0 0 15px rgba(0, 153, 255, 0.4); border-color: rgba(255, 255, 255, 0.7) !important; }
+  100% { box-shadow: 0 0 30px rgba(0, 153, 255, 0.8); border-color: #09f !important; }
 }
 
 // ==========================================
-// BOTÓN PRINCIPAL DE ESCANEO
+// ESTADO DEL ESCANEO (Texto bajo la cámara)
 // ==========================================
-ion-button {
-  --background: linear-gradient(135deg, #4318ff 0%, #7b2cbf 100%) !important;
-  --background-hover: linear-gradient(135deg, #7b2cbf 0%, #9d4edd 100%) !important;
-  --border-radius: 12px !important;
-  --box-shadow: 0 4px 15px rgba(67, 24, 255, 0.4) !important;
-  font-weight: 700 !important;
-  letter-spacing: 1px;
-  height: 55px;
-  margin: 20px 16px;
-  transition: transform 0.2s;
-
-  &:active {
-    transform: scale(0.97);
-  }
-
-  // Estilo cuando el botón está deshabilitado (Cargando modelos)
-  &[disabled] {
-    --background: #2a2a35 !important;
-    --box-shadow: none !important;
-    opacity: 0.7;
+.scan-status {
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  
+  ion-icon {
+    font-size: 24px;
+    vertical-align: middle;
+    margin-right: 5px;
   }
 }
 
@@ -91,11 +119,14 @@ ion-button {
 // CAJA DE RESULTADO (EXITOSO / DENEGADO)
 // ==========================================
 .result-box {
-  background: rgba(0, 0, 0, 0.4) !important;
-  backdrop-filter: blur(8px);
-  border: 1px dashed rgba(255, 255, 255, 0.2);
-  margin: 0 16px 20px 16px;
-  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(10px);
+  border-radius: 15px;
+  padding: 15px;
+  margin: 20px auto;
+  max-width: 350px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 1);
 
   h2 {
     font-size: 1.5rem;
@@ -106,17 +137,195 @@ ion-button {
 }
 
 // ==========================================
+// PANELES DE CARGA Y ERRORES
+// ==========================================
+.neural-loading-panel, .initialization-error {
+  color: #ffffff !important;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+  
+  ion-spinner {
+    --color: #ffffff !important;
+    width: 60px;
+    height: 60px;// ==========================================
+// FONDO PRINCIPAL (Fondo Animado del Login)
+// ==========================================
+ion-content {
+  --background: transparent;
+
+  &::before,
+  &::after {
+    content: "";
+    animation: slide 4s ease-in-out infinite alternate;
+    background-image: linear-gradient(-60deg, #6c3 50%, #09f 50%);
+    bottom: 0; left: -50%; opacity: .5; position: fixed; right: -50%; top: 0; z-index: -1;
+    pointer-events: none;
+  }
+  &::after { 
+    animation-direction: alternate-reverse; 
+    animation-duration: 5s; 
+  }
+}
+
+@keyframes slide { 
+  0% { transform: translateX(-25%); } 
+  100% { transform: translateX(25%); } 
+}
+
+// ==========================================
 // HEADER Y TOOLBAR
 // ==========================================
 ion-toolbar {
-  --background: rgba(10, 10, 26, 0.85) !important;
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  --background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
 
   ion-title {
     font-weight: 800;
-    letter-spacing: 1.5px;
+    letter-spacing: 1px;
     color: #ffffff;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   }
+}
+
+// ==========================================
+// TARJETA SUPERIOR (ESTADO DEL SISTEMA - Estilo Cristal)
+// ==========================================
+ion-card {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(15px) !important;
+  -webkit-backdrop-filter: blur(15px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2) !important;
+  margin: 16px auto;
+  max-width: 380px;
+
+  ion-card-content {
+    padding: 15px !important;
+    
+    p {
+      color: #333333 !important; /* Texto oscuro para contraste */
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin: 0;
+    }
+  }
+}
+
+// ==========================================
+// CONTENEDOR DE LA CÁMARA EN VIVO
+// ==========================================
+.container-imagenes {
+  padding: 10px;
+
+  h5 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #ffffff;
+    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+    margin-bottom: 15px;
+    text-transform: uppercase;
+  }
+
+  // Estilo para el video
+  video {
+    border-radius: 20px !important;
+    background-color: #000;
+    box-shadow: 0 10px 30px rgba(0, 153, 255, 0.3) !important;
+    border: 4px solid rgba(255, 255, 255, 0.9) !important;
+    transition: all 0.3s ease-in-out;
+    animation: pulse-border 2s infinite alternate;
+  }
+}
+
+@keyframes pulse-border {
+  0% { box-shadow: 0 0 15px rgba(0, 153, 255, 0.4); border-color: rgba(255, 255, 255, 0.7) !important; }
+  100% { box-shadow: 0 0 30px rgba(0, 153, 255, 0.8); border-color: #09f !important; }
+}
+
+// ==========================================
+// ESTADO DEL ESCANEO
+// ==========================================
+.scan-status {
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  
+  ion-icon {
+    font-size: 24px;
+    vertical-align: middle;
+    margin-right: 5px;
+  }
+}
+
+// ==========================================
+// CAJA DE RESULTADO (BASE)
+// ==========================================
+.result-box {
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(10px);
+  border-radius: 15px;
+  padding: 15px;
+  margin: 20px auto;
+  max-width: 350px;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 1);
+
+  h2 {
+    font-size: 1.5rem;
+    letter-spacing: 1px;
+    margin: 0;
+    text-transform: uppercase;
+    font-weight: 800;
+  }
+}
+
+// ==========================================
+// CLASES DINÁMICAS DE RESULTADO
+// ==========================================
+.box-exitoso {
+  border: 2px solid #00e676 !important;
+  box-shadow: 0 5px 20px rgba(0, 230, 118, 0.4) !important;
+  h2 { color: #00e676 !important; }
+}
+
+.box-denegado {
+  border: 2px solid #ff1744 !important;
+  box-shadow: 0 5px 20px rgba(255, 23, 68, 0.4) !important;
+  h2 { color: #ff1744 !important; }
+}
+
+// ==========================================
+// PANELES DE CARGA Y ERRORES
+// ==========================================
+.neural-loading-panel, .initialization-error {
+  color: #ffffff !important;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+  
+  ion-spinner {
+    --color: #ffffff !important;
+    width: 60px;
+    height: 60px;
+    margin-bottom: 10px;
+  }
+  
+  p {
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+}
+    margin-bottom: 10px;
+  }
+  
+  p {
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+}
+
+ion-button {
+  font-weight: 700;
+  align-self: center;
 }

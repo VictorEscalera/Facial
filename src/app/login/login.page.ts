@@ -1,9 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
+import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 
-// CORRECCIÓN: Todo importado estrictamente desde /standalone
 import { 
   IonContent, 
   IonCard, 
@@ -13,7 +12,7 @@ import {
   IonInput, 
   IonButton,
   NavController,
-  ToastController // <-- Ahora sí importado correctamente como componente standalone
+  ToastController 
 } from '@ionic/angular/standalone';
 
 import { addIcons } from 'ionicons';
@@ -41,13 +40,14 @@ export class LoginPage {
   private router = inject(Router);
   private navCtrl = inject(NavController); 
   private http = inject(HttpClient); 
-  private toastController = inject(ToastController); // <-- Inyección standalone limpia
+  private toastController = inject(ToastController);
 
   private API_URL = 'https://app-facial.vercel.app/login';
 
+  // Agregamos Validators.required para que el botón se desactive si están vacíos
   loginForm = new FormGroup({
-    email: new FormControl(''),
-    password: new FormControl('')
+    email: new FormControl('', [Validators.required, Validators.email]),
+    password: new FormControl('', Validators.required)
   });
 
   constructor() {
@@ -55,23 +55,25 @@ export class LoginPage {
   }
 
   iniciarSesion() {
+    if (this.loginForm.invalid) {
+      return; // Bloqueo de seguridad adicional por si burlan el HTML
+    }
+
     const correoIngresado = this.loginForm.value.email;
     const passwordIngresado = this.loginForm.value.password;
     
-    if (!correoIngresado) {
-      this.router.navigate(['/inicio'], { queryParams: { usuario: 'Administrador' } });
-      return;
-    }
-
-    const credenciales = {
-      email: correoIngresado,
-      password: passwordIngresado
-    };
+    const credenciales = { email: correoIngresado, password: passwordIngresado };
 
     this.http.post(this.API_URL, credenciales).subscribe({
       next: async (respuesta: any) => {
         await this.mostrarMensaje(respuesta.mensaje, 'success');
-        this.router.navigate(['/inicio'], { queryParams: { usuario: respuesta.usuario } });
+        
+        // Guardamos el correo en localStorage
+        const emailAUsar = respuesta.usuario || correoIngresado;
+        localStorage.setItem('emailUsuarioActivo', emailAUsar);
+        
+        // Redirigimos de forma limpia, SIN queryParams
+        this.navCtrl.navigateRoot('/inicio');
       },
       error: async (err) => {
         const mensajeError = err.error?.error || 'Error al conectar con el servidor';
